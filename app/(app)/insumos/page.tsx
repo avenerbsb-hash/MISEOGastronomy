@@ -1,97 +1,26 @@
 import type { Metadata } from "next"
 import Link from "next/link"
-import { createClient } from "@/lib/supabase/server"
 import { exigirCustos } from "@/lib/sessao"
-import { categorias, nomesCategorias, variacoesDaCasa, type Insumo, type VariacaoInsumo } from "@/lib/dados"
 import { custoPorUnidade } from "@/lib/formato"
 import { Variacao } from "@/components/variacao"
 import { Entrada, Selecao } from "@/components/campos"
 import { Button, buttonVariants } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
+import { carregarInsumos, FILTROS, ORDENS, type Ordem, type ParamsInsumos } from "./dados"
 
 export const metadata: Metadata = { title: "Insumos" }
 
-// Situação do custo de cada insumo na casa (vem de variacoes_insumos)
-type Situacao = "subiu" | "caiu" | "estavel" | "sem_comparacao" | "sem_preco"
-function situacao(v: VariacaoInsumo | undefined): Situacao {
-  if (!v) return "sem_preco"
-  if (v.sinal === "vermelho") return "subiu"
-  if (v.sinal === "verde") return "caiu"
-  return v.custo_anterior == null ? "sem_comparacao" : "estavel"
-}
-
-const FILTROS: { valor: "" | Situacao; rotulo: string }[] = [
-  { valor: "", rotulo: "Todos" },
-  { valor: "subiu", rotulo: "▲ Subiram" },
-  { valor: "caiu", rotulo: "▼ Caíram" },
-  { valor: "estavel", rotulo: "= Estáveis" },
-  { valor: "sem_comparacao", rotulo: "Sem comparação" },
-  { valor: "sem_preco", rotulo: "Sem preço" },
-]
-
-const ORDENS = {
-  nome: "Nome (A–Z)",
-  alta: "Maior alta primeiro",
-  queda: "Maior queda primeiro",
-} as const
-type Ordem = keyof typeof ORDENS
-
-type Params = { q?: string; categoria?: string; variacao?: string; ordem?: string }
-
-export default async function PaginaInsumos({ searchParams }: { searchParams: Promise<Params> }) {
+export default async function PaginaInsumos({ searchParams }: { searchParams: Promise<ParamsInsumos> }) {
   const s = await exigirCustos()
-  const params = await searchParams
-  const { q = "", categoria = "" } = params
-  const filtro = FILTROS.some((f) => f.valor === params.variacao) ? (params.variacao as Situacao) : ""
-  const ordem: Ordem = params.ordem && params.ordem in ORDENS ? (params.ordem as Ordem) : "nome"
-  const supabase = await createClient()
+  const { q, categoria, filtro, ordem, cats, nomes, variacoes, insumos, contagem, erro } =
+    await carregarInsumos(s.casa.id, await searchParams)
 
-  const cats = await categorias("insumo")
-  const nomes = nomesCategorias(cats)
-
-  let consulta = supabase
-    .from("insumos")
-    .select("id, codigo, nome, dimensao, categoria_id, ativo")
-    .order("nome")
-  if (q.trim()) {
-    const termo = q.trim().replace(/[%,()]/g, " ")
-    consulta = consulta.or(`nome.ilike.%${termo}%,codigo.ilike.%${termo}%`)
-  }
-  if (categoria) {
-    // Categoria-mãe inclui as subcategorias
-    const ids = [categoria, ...cats.filter((c) => c.pai_id === categoria).map((c) => c.id)]
-    consulta = consulta.in("categoria_id", ids)
-  }
-  const [{ data, error }, variacoes] = await Promise.all([consulta, variacoesDaCasa(s.casa.id)])
-  const todos = (data ?? []) as Pick<Insumo, "id" | "codigo" | "nome" | "dimensao" | "categoria_id" | "ativo">[]
-
-  // Contagem por situação (respeita busca e categoria) e filtro escolhido
-  const contagem = new Map<string, number>([["", todos.length]])
-  for (const i of todos) {
-    const k = situacao(variacoes.get(i.id))
-    contagem.set(k, (contagem.get(k) ?? 0) + 1)
-  }
-  const insumos = filtro ? todos.filter((i) => situacao(variacoes.get(i.id)) === filtro) : [...todos]
-
-  // Ordenação pela variação que o banco calculou; sem variação vai para o fim
-  if (ordem !== "nome") {
-    const sentido = ordem === "alta" ? -1 : 1
-    insumos.sort((a, b) => {
-      const va = variacoes.get(a.id)?.variacao_pct
-      const vb = variacoes.get(b.id)?.variacao_pct
-      if (va == null && vb == null) return a.nome.localeCompare(b.nome, "pt-BR")
-      if (va == null) return 1
-      if (vb == null) return -1
-      return sentido * (Number(va) - Number(vb)) || a.nome.localeCompare(b.nome, "pt-BR")
-    })
-  }
-
-  const link = (mudar: Partial<Params>) => {
+  const link = (base: string, mudar: Partial<ParamsInsumos> = {}) => {
     const p = new URLSearchParams()
     const final = { q, categoria, variacao: filtro, ordem: ordem === "nome" ? "" : ordem, ...mudar }
     for (const [k, v] of Object.entries(final)) if (v) p.set(k, v)
     const qs = p.toString()
-    return qs ? `/insumos?${qs}` : "/insumos"
+    return qs ? `${base}?${qs}` : base
   }
 
   return (
@@ -102,6 +31,7 @@ export default async function PaginaInsumos({ searchParams }: { searchParams: Pr
           <p className="text-sm text-muted-foreground">Custo da última compra validada em {s.casa.nome}</p>
         </div>
         <div className="flex flex-wrap gap-2">
+          <Link href={link("/insumos/relatorio")} className={buttonVariants({ variant: "outline", className: "h-10 px-4" })}>Relatório PDF</Link>
           <Link href="/pendencias/notas" className={buttonVariants({ variant: "outline", className: "h-10 px-4" })}>Importar nota (XML)</Link>
           <Link href="/insumos/novo" className={buttonVariants({ className: "h-10 px-4" })}>Novo insumo</Link>
         </div>
@@ -131,7 +61,7 @@ export default async function PaginaInsumos({ searchParams }: { searchParams: Pr
           return (
             <Link
               key={f.valor || "todos"}
-              href={link({ variacao: f.valor })}
+              href={link("/insumos", { variacao: f.valor })}
               aria-current={ativo ? "page" : undefined}
               className={cn(
                 "inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm",
@@ -147,7 +77,7 @@ export default async function PaginaInsumos({ searchParams }: { searchParams: Pr
         })}
       </nav>
 
-      {error ? <p className="text-sm text-destructive">Não foi possível carregar os insumos.</p> : null}
+      {erro ? <p className="text-sm text-destructive">Não foi possível carregar os insumos.</p> : null}
       {insumos.length === 0 ? (
         <p className="rounded-xl border p-6 text-center text-sm text-muted-foreground">Nenhum insumo encontrado.</p>
       ) : (

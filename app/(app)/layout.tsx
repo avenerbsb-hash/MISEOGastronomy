@@ -15,7 +15,7 @@ export default async function LayoutApp({ children }: { children: React.ReactNod
 
   return (
     <div className="min-h-dvh">
-      <header className="sticky top-0 z-20 border-b bg-background/95 backdrop-blur">
+      <header className="sticky top-0 z-20 border-b bg-background/95 backdrop-blur print:hidden">
         <div className="mx-auto flex max-w-6xl items-center gap-3 px-4 py-2">
           <span className="font-semibold tracking-wide">MISEO</span>
           {s.casa ? <SeletorCasa casas={s.casas} atual={s.casa.id} /> : null}
@@ -31,7 +31,7 @@ export default async function LayoutApp({ children }: { children: React.ReactNod
           </div>
         ) : null}
       </header>
-      <main className="mx-auto max-w-6xl px-4 py-4">
+      <main className="mx-auto max-w-6xl px-4 py-4 print:max-w-none print:p-0">
         {s.casa ? (
           children
         ) : (

@@ -128,3 +128,11 @@
     @apply font-sans;
   }
 }
+
+/* Impressão / "Salvar como PDF": folha A4, fundo branco, cores das variações mantidas */
+@media print {
+  @page { size: A4; margin: 12mm 10mm; }
+  html, body { background: #fff !important; color: #000 !important; }
+  * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  thead { display: table-header-group; }
+}
