@@ -10,8 +10,9 @@ export default async function LayoutApp({ children }: { children: React.ReactNod
         { href: "/insumos", rotulo: "Insumos" },
         { href: "/pendencias", rotulo: "Pendências" },
         { href: "/subprodutos", rotulo: "Subprodutos" },
+        { href: "/fichas", rotulo: "Fichas" },
       ]
-    : [{ href: "/subprodutos", rotulo: "Subprodutos" }]
+    : [{ href: "/subprodutos", rotulo: "Subprodutos" }, { href: "/fichas", rotulo: "Fichas" }]
 
   return (
     <div className="min-h-dvh">
