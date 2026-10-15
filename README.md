@@ -12,4 +12,5 @@ supabase/seed/02_regras_de_medicao.sql — ovos por unidade, mel em mL, caixas e
 Já rodou 0001, 0002 e o seed 01? Rode só 0003 a 0006 e o seed 02 (0004 a 0006 podem vir antes ou depois dos seeds).
 Já rodou tudo até a 0005? Rode só a 0006.
 Testes locais: testes/rodar.sh (Postgres 16 descartável). Saída esperada: "TODOS OS TESTES PASSARAM", "CMV DE REFERÊNCIA OK", "CORREÇÕES 0005 OK", "CORREÇÕES 0006 OK", "SEED OK" e "RECEBIMENTO OK". O GitHub Actions roda os mesmos testes a cada envio.
+No Windows (com o PostgreSQL 16 instalado): powershell -ExecutionPolicy Bypass -File testes\rodar.ps1 — termina com "TUDO OK" ou "TESTES FALHARAM".
 ferramentas/ tem o leitor do PDF do xFácil e as regras de agrupamento usadas para gerar o seed.
