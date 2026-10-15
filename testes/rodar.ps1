@@ -54,6 +54,9 @@ try {
   P aceite  'testes/60_correcoes_0006.sql'
   P seed    'supabase/seed/01_insumos_giuli.sql'
   P seed    'testes/20_seed_giuli.sql'
+  P seed    'supabase/seed/03_categorias.sql' -Silencioso
+  P seed    'supabase/seed/03_categorias.sql' -Silencioso
+  P seed    'testes/70_categorias.sql'
   P medicao 'supabase/seed/01_insumos_giuli.sql'
   P medicao 'supabase/seed/02_regras_de_medicao.sql' -Silencioso
   P medicao 'testes/30_recebimento.sql'
@@ -67,7 +70,7 @@ try {
 
 # Mesma conferencia do GitHub Actions (regex sem acento para nao depender da codificacao do arquivo)
 $esperadas = 'TODOS OS TESTES PASSARAM', 'CMV DE REFER.NCIA OK', 'CORRE..ES 0005 OK', 'CORRE..ES 0006 OK',
-             'SEED OK', 'RECEBIMENTO OK'
+             'SEED OK', 'CATEGORIAS OK', 'RECEBIMENTO OK'
 foreach ($m in $esperadas) {
   if (-not ($saida | Where-Object { $_ -match $m })) { Write-Host "!! Faltou: $m"; $falhou = $true }
 }

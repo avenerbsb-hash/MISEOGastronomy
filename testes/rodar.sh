@@ -21,6 +21,9 @@ $P -d aceite -f testes/50_correcoes_0005.sql 2>&1 | filtro
 $P -d aceite -f testes/60_correcoes_0006.sql 2>&1 | filtro
 $P -d seed -f supabase/seed/01_insumos_giuli.sql 2>&1 | filtro
 $P -d seed -f testes/20_seed_giuli.sql 2>&1 | filtro
+$P -d seed -f supabase/seed/03_categorias.sql >/dev/null
+$P -d seed -f supabase/seed/03_categorias.sql >/dev/null
+$P -d seed -f testes/70_categorias.sql 2>&1 | filtro
 $P -d medicao -f supabase/seed/01_insumos_giuli.sql 2>&1 | filtro
 $P -d medicao -f supabase/seed/02_regras_de_medicao.sql >/dev/null
 $P -d medicao -f testes/30_recebimento.sql 2>&1 | filtro

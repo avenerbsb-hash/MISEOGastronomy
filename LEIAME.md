@@ -23,10 +23,11 @@ Ordem para aplicar no Supabase (SQL Editor ou `supabase db push`):
 6. `supabase/migrations/0006_historico_e_permissoes.sql` — compra própria prevalece sobre referência, dimensão/densidade protegidas (quantidade convertida congelada na aprovação), status de versão e data retroativa só pelo admin.
 7. `supabase/seed/01_insumos_giuli.sql` — 5 casas, 71 insumos, 362 linhas de nota do Giuli; referência para as demais casas. Rodar uma vez.
 8. `supabase/seed/02_regras_de_medicao.sql` — ovos por unidade, mel em mL, caixas e peças de peso variável lançadas com a quantidade medida.
+9. `supabase/seed/03_categorias.sql` — árvore padrão de categorias: insumos (hortifrúti, mercearia, padaria, congelados, bebidas, descartáveis, limpeza) e receitas (subprodutos e fichas finais). Pode rodar mais de uma vez.
 
 Já rodou 0001, 0002 e o seed 01? Rode só 0003 a 0006 e o seed 02 (0004 a 0006 podem vir antes ou depois dos seeds).
 Já rodou tudo até a 0005? Rode só a 0006.
 
-Testes locais: `testes/rodar.sh` (Postgres 16 descartável). Saída esperada: "TODOS OS TESTES PASSARAM", "CMV DE REFERÊNCIA OK", "CORREÇÕES 0005 OK", "CORREÇÕES 0006 OK", "SEED OK" e "RECEBIMENTO OK". O GitHub Actions roda os mesmos testes a cada envio.
+Testes locais: `testes/rodar.sh` (Postgres 16 descartável). Saída esperada: "TODOS OS TESTES PASSARAM", "CMV DE REFERÊNCIA OK", "CORREÇÕES 0005 OK", "CORREÇÕES 0006 OK", "SEED OK", "CATEGORIAS OK" e "RECEBIMENTO OK". O GitHub Actions roda os mesmos testes a cada envio.
 No Windows (com o PostgreSQL 16 instalado): `powershell -ExecutionPolicy Bypass -File testes\rodar.ps1` — termina com "TUDO OK" ou "TESTES FALHARAM".
 `ferramentas/` tem o leitor do PDF do xFácil e as regras de agrupamento usadas para gerar o seed.

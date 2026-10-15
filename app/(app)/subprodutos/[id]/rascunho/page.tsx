@@ -60,9 +60,7 @@ export default async function Rascunho({ params }: { params: Promise<{ id: strin
     categorias("insumo"),
   ])
   const nomesCat = nomesCategorias(catsInsumo)
-  const opcoesCategoria = catsInsumo
-    .map((c) => ({ id: c.id, nome: nomesCat.get(c.id) ?? c.nome }))
-    .sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR"))
+  const opcoesCategoria = catsInsumo.map((c) => ({ id: c.id, nome: nomesCat.get(c.id) ?? c.nome }))
   const lista = (componentes.data ?? []) as unknown as Componente[]
   const linhas = (previa.data ?? []) as LinhaGerencial[]
   // Total do rascunho: soma dos custos por componente que o banco calculou

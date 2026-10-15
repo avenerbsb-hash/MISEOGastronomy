@@ -37,10 +37,13 @@ export async function variacoesDaCasa(estab: string): Promise<Map<string, Variac
   return new Map(((data ?? []) as VariacaoInsumo[]).map((v) => [v.insumo_id, v]))
 }
 
+// Em ordem de leitura: cada grupo seguido das suas subcategorias ("Bebidas", "Bebidas › Café", …)
 export async function categorias(escopo: "insumo" | "receita"): Promise<Categoria[]> {
   const supabase = await createClient()
-  const { data } = await supabase.from("categorias").select("id, nome, pai_id").eq("escopo", escopo).order("nome")
-  return (data ?? []) as Categoria[]
+  const { data } = await supabase.from("categorias").select("id, nome, pai_id").eq("escopo", escopo)
+  const lista = (data ?? []) as Categoria[]
+  const nomes = nomesCategorias(lista)
+  return lista.sort((a, b) => (nomes.get(a.id) ?? "").localeCompare(nomes.get(b.id) ?? "", "pt-BR"))
 }
 
 // Nome da categoria com o grupo: "Proteínas e laticínios › Bovino"
