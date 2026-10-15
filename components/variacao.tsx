@@ -19,7 +19,8 @@ export function Variacao({
         )}
       >
         <span aria-hidden>{icone}</span>
-        {texto}{pct != null && pct !== 0 ? ` ${percentual(pct, true)}` : ""}
+        {texto}
+        {pct == null || tipo === "neutro" ? "" : Math.abs(Number(pct)) < 0.05 ? (tipo === "alta" ? " +<0,1%" : " −<0,1%") : ` ${percentual(pct, true)}`}
       </span>
       <span className="text-xs text-muted-foreground">
         {compacto ? dataCurta(data) : `compra de ${dataCurta(data)} · ${casa}`}
