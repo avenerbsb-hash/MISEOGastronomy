@@ -70,6 +70,59 @@ export async function salvarInsumo(id: string | null, _: Estado, dados: FormData
   redirect(`/insumos/${r.data.id}`)
 }
 
+// ------------------------------------------------------------------ cadastro rápido (de dentro do rascunho)
+export type InsumoNovo = { id: string; nome: string; dimensao: Dimensao }
+export type EstadoNovoInsumo = { erro?: string; novo?: InsumoNovo } | null
+
+const esquemaRapido = z.object({
+  nome: texto(120).min(2, "Informe o nome do insumo."),
+  codigo: texto(30).optional(),
+  categoria_id: z.string().uuid().optional(),
+  dimensao: z.enum(["massa", "volume", "contagem"], { message: "Escolha como o insumo é medido." }),
+})
+
+// Código automático a partir do nome: "Tomate pelado" → "TOM-4821"
+function codigoAutomatico(nome: string): string {
+  const base = nome.normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^A-Za-z]/g, "").slice(0, 3).toUpperCase() || "INS"
+  return `${base.padEnd(3, "X")}-${Math.floor(1000 + Math.random() * 9000)}`
+}
+
+export async function criarInsumoRapido(_: EstadoNovoInsumo, dados: FormData): Promise<EstadoNovoInsumo> {
+  await exigirCustos()
+  const v = esquemaRapido.safeParse({
+    nome: dados.get("nome"),
+    codigo: opcional(dados.get("codigo")),
+    categoria_id: opcional(dados.get("categoria_id")),
+    dimensao: dados.get("dimensao"),
+  })
+  if (!v.success) return { erro: v.error.issues[0].message }
+
+  const supabase = await createClient()
+  const automatico = !v.data.codigo
+  let ultimoErro: unknown = null
+  // Com código automático, tenta de novo se o número sorteado já existir
+  for (let tentativa = 0; tentativa < (automatico ? 3 : 1); tentativa++) {
+    const { data, error } = await supabase
+      .from("insumos")
+      .insert({
+        codigo: (v.data.codigo ?? codigoAutomatico(v.data.nome)).toUpperCase(),
+        nome: v.data.nome,
+        categoria_id: v.data.categoria_id ?? null,
+        dimensao: v.data.dimensao,
+      })
+      .select("id, nome, dimensao")
+      .single()
+    if (!error) {
+      revalidatePath("/insumos")
+      return { novo: { id: data.id, nome: data.nome, dimensao: data.dimensao as Dimensao } }
+    }
+    ultimoErro = error
+    const codigoRepetido = error.code === "23505" && /codigo/.test(`${error.message} ${error.details ?? ""}`)
+    if (!(automatico && codigoRepetido)) break
+  }
+  return { erro: traduzirErro(ultimoErro) }
+}
+
 // ------------------------------------------------------------------ registrar compra (pendente)
 const esquemaCompra = z.object({
   data_compra: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Informe a data da compra."),

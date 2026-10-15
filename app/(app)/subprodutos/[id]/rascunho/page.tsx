@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server"
 import { exigirCustos } from "@/lib/sessao"
+import { categorias, nomesCategorias } from "@/lib/dados"
 import { numero, reais, rotuloUnidade, type Dimensao } from "@/lib/formato"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { FormAcao, BotaoEnviar } from "@/components/form-acao"
@@ -48,7 +49,7 @@ export default async function Rascunho({ params }: { params: Promise<{ id: strin
     )
   }
 
-  const [componentes, insumos, subprodutos, previa] = await Promise.all([
+  const [componentes, insumos, subprodutos, previa, catsInsumo] = await Promise.all([
     supabase.from("componentes_receita")
       .select("id, ordem, etapa, quantidade, unidade, observacao, insumos(nome), receitas(nome)")
       .eq("versao_id", versao.id).order("ordem"),
@@ -56,7 +57,12 @@ export default async function Rascunho({ params }: { params: Promise<{ id: strin
     supabase.from("receitas").select("id, nome, dimensao_saida, densidade_validada_em")
       .eq("tipo", "subproduto").eq("ativo", true).neq("id", id).order("nome"),
     supabase.rpc("ficha_gerencial", { p_receita: id, p_estab: s.casa.id, p_versao: versao.id }),
+    categorias("insumo"),
   ])
+  const nomesCat = nomesCategorias(catsInsumo)
+  const opcoesCategoria = catsInsumo
+    .map((c) => ({ id: c.id, nome: nomesCat.get(c.id) ?? c.nome }))
+    .sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR"))
   const lista = (componentes.data ?? []) as unknown as Componente[]
   const linhas = (previa.data ?? []) as LinhaGerencial[]
   // Total do rascunho: soma dos custos por componente que o banco calculou
@@ -119,7 +125,7 @@ export default async function Rascunho({ params }: { params: Promise<{ id: strin
             </section>
           ))}
           <div className="rounded-lg border p-3">
-            <FormComponente acao={adicionarComponente.bind(null, versao.id, id)} insumos={opcoesInsumo} subprodutos={opcoesSub} etapas={etapas} />
+            <FormComponente acao={adicionarComponente.bind(null, versao.id, id)} insumos={opcoesInsumo} subprodutos={opcoesSub} etapas={etapas} categorias={opcoesCategoria} />
           </div>
         </CardContent>
       </Card>
