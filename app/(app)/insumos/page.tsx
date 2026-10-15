@@ -1,8 +1,9 @@
 import type { Metadata } from "next"
 import Link from "next/link"
 import { exigirCustos } from "@/lib/sessao"
-import { custoPorUnidade } from "@/lib/formato"
-import { Variacao } from "@/components/variacao"
+import { custoPorUnidade, dataCurta } from "@/lib/formato"
+import { BadgeVariacao } from "@/components/variacao"
+import { COR_TODOS, CORES_STATUS } from "@/components/status-preco"
 import { Entrada, Selecao } from "@/components/campos"
 import { Button, buttonVariants } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
@@ -58,20 +59,22 @@ export default async function PaginaInsumos({ searchParams }: { searchParams: Pr
         {FILTROS.map((f) => {
           const ativo = filtro === f.valor
           const n = contagem.get(f.valor) ?? 0
+          // Mesma cor selecionado ou não; a seleção ganha borda forte. "Todos" selecionado = preto.
+          const cor = f.valor ? CORES_STATUS[f.valor] : ativo ? COR_TODOS : null
           return (
             <Link
               key={f.valor || "todos"}
               href={link("/insumos", { variacao: f.valor })}
               aria-current={ativo ? "page" : undefined}
               className={cn(
-                "inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm",
-                ativo ? "border-foreground bg-foreground text-background" : "hover:bg-muted",
-                !ativo && f.valor === "subiu" && "text-red-700 dark:text-red-400",
-                !ativo && f.valor === "caiu" && "text-emerald-700 dark:text-emerald-400",
+                "inline-flex items-center gap-1.5 rounded-full border-2 px-3 py-1 text-sm font-medium transition-shadow",
+                cor ? "" : "border-border bg-background text-foreground hover:bg-muted",
+                ativo ? "shadow-sm" : cor ? "border-transparent hover:shadow-sm" : "hover:shadow-sm",
               )}
+              style={cor ? { color: cor.texto, backgroundColor: cor.fundo, borderColor: ativo ? cor.texto : "transparent" } : undefined}
             >
               {f.rotulo}
-              <span className={cn("tabular-nums text-xs", ativo ? "opacity-80" : "text-muted-foreground")}>{n}</span>
+              <span className="tabular-nums text-xs font-semibold opacity-80">{n}</span>
             </Link>
           )
         })}
@@ -96,10 +99,13 @@ export default async function PaginaInsumos({ searchParams }: { searchParams: Pr
                     </div>
                   </div>
                   <div className="grid gap-0.5 sm:justify-items-end">
-                    <span className="font-medium tabular-nums">
-                      {v ? custoPorUnidade(v.custo_atual, i.dimensao) : <span className="text-sm font-normal text-muted-foreground">Sem preço nesta casa</span>}
+                    <span className="inline-flex flex-wrap items-center gap-2">
+                      {v ? <span className="font-medium tabular-nums text-foreground">{custoPorUnidade(v.custo_atual, i.dimensao)}</span> : null}
+                      <BadgeVariacao sinal={v?.sinal} pct={v?.variacao_pct} temPreco={!!v} />
                     </span>
-                    {v ? <Variacao sinal={v.sinal} pct={v.variacao_pct} data={v.data_referencia} casa={s.casa.nome} /> : null}
+                    <span className="text-xs text-muted-foreground">
+                      {v ? `compra de ${dataCurta(v.data_referencia)} · ${s.casa.nome}` : `nesta casa · ${s.casa.nome}`}
+                    </span>
                   </div>
                 </Link>
               </li>

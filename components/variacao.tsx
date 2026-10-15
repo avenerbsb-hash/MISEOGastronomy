@@ -1,27 +1,41 @@
 import { dataCurta, percentual } from "@/lib/formato"
-import { cn } from "@/lib/utils"
+import { CORES_STATUS, statusDoSinal, type StatusPreco } from "@/components/status-preco"
 
-// Variação de custo: queda = verde, alta = vermelho, igual = neutro; sempre com data e casa
+const ROTULO: Record<StatusPreco, string> = {
+  subiu: "Subiu", caiu: "Caiu", estavel: "Estável", sem_comparacao: "Sem comparação", sem_preco: "Sem preço",
+}
+
+// Badge de status do preço: ▲ +12,5% (vermelho) · ▼ −8,3% (verde) · = 0,0% (cinza) · Sem comparação · Sem preço
+export function BadgeVariacao({ sinal, pct, temPreco = true }: { sinal?: string | null; pct?: number | null; temPreco?: boolean }) {
+  const status = statusDoSinal(sinal, pct, temPreco)
+  const cor = CORES_STATUS[status]
+  let texto: string
+  if (status === "subiu" || status === "caiu") {
+    const p = Number(pct)
+    texto = `${status === "subiu" ? "▲" : "▼"} ${Math.abs(p) < 0.05 ? (status === "subiu" ? "+<0,1%" : "−<0,1%") : percentual(p, true).replace("-", "−")}`
+  } else if (status === "estavel") {
+    texto = "= 0,0%"
+  } else {
+    texto = ROTULO[status]
+  }
+  return (
+    <span
+      className="inline-flex items-center whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-semibold tabular-nums"
+      style={{ color: cor.texto, backgroundColor: cor.fundo }}
+      title={ROTULO[status]}
+    >
+      {texto}
+    </span>
+  )
+}
+
+// Variação de custo com a referência: sempre com data e casa
 export function Variacao({
   sinal, pct, data, casa, compacto = false,
 }: { sinal: string | null; pct: number | null; data: string | null; casa: string; compacto?: boolean }) {
-  const tipo = sinal === "verde" ? "queda" : sinal === "vermelho" ? "alta" : "neutro"
-  const icone = tipo === "queda" ? "▼" : tipo === "alta" ? "▲" : "="
-  const texto = tipo === "queda" ? "Caiu" : tipo === "alta" ? "Subiu" : pct == null ? "Sem comparação" : "Igual"
   return (
     <span className="inline-flex flex-wrap items-center gap-x-2 gap-y-0.5">
-      <span
-        className={cn(
-          "inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-xs font-medium tabular-nums",
-          tipo === "queda" && "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400",
-          tipo === "alta" && "bg-red-500/10 text-red-700 dark:text-red-400",
-          tipo === "neutro" && "bg-muted text-muted-foreground",
-        )}
-      >
-        <span aria-hidden>{icone}</span>
-        {texto}
-        {pct == null || tipo === "neutro" ? "" : Math.abs(Number(pct)) < 0.05 ? (tipo === "alta" ? " +<0,1%" : " −<0,1%") : ` ${percentual(pct, true)}`}
-      </span>
+      <BadgeVariacao sinal={sinal} pct={pct} />
       <span className="text-xs text-muted-foreground">
         {compacto ? dataCurta(data) : `compra de ${dataCurta(data)} · ${casa}`}
       </span>
