@@ -19,7 +19,12 @@ jobs:
       - name: Rodar testes/rodar.sh
         run: |
           set -o pipefail
-          sudo bash testes/rodar.sh | tee saida.txt
-          for m in "TODOS OS TESTES PASSARAM" "CMV DE REFERÊNCIA OK" "CORREÇÕES 0005 OK" "CORREÇÕES 0006 OK""SEED OK" "RECEBIMENTO OK"; do
+          sudo bash testes/rodar.sh 2>&1 | tee saida.txt
+          for m in "TODOS OS TESTES PASSARAM" "CMV DE REFERÊNCIA OK" "CORREÇÕES 0005 OK" "CORREÇÕES 0006 OK" "SEED OK" "RECEBIMENTO OK"; do
             grep -q "$m" saida.txt || { echo "Faltou: $m"; exit 1; }
           done
+
+      - name: Resumo
+        if: always()
+        run: |
+          { echo '```'; tail -n 100 saida.txt; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
