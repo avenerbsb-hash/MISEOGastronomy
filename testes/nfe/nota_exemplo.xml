@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- NF-e FICTÍCIA para testes do leitor (CNPJs e chave inventados) -->
+<nfeProc xmlns="http://www.portalfiscal.inf.br/nfe" versao="4.00">
+  <NFe>
+    <infNFe Id="NFe53261012345678000199550010000123451000123459" versao="4.00">
+      <ide>
+        <cUF>53</cUF><natOp>VENDA</natOp><mod>55</mod><serie>1</serie><nNF>12345</nNF>
+        <dhEmi>2026-10-14T09:32:10-03:00</dhEmi><tpNF>1</tpNF>
+      </ide>
+      <emit>
+        <CNPJ>12345678000199</CNPJ>
+        <xNome>JR DISTRIBUIDORA DE CARNES LTDA</xNome>
+        <xFant>JR CARNES</xFant>
+      </emit>
+      <dest>
+        <CNPJ>98765432000110</CNPJ>
+        <xNome>ALMA BOUTIQUE BAR E RESTAURANTE LTDA</xNome>
+      </dest>
+      <det nItem="1">
+        <prod>
+          <cProd>00123</cProd><xProd>CONTRAFILE BOVINO RESFRIADO  KG</xProd><NCM>02013000</NCM><CFOP>5102</CFOP>
+          <uCom>KG</uCom><qCom>12.4500</qCom><vUnCom>79.9900000000</vUnCom><vProd>995.88</vProd>
+          <vDesc>15.88</vDesc>
+        </prod>
+        <imposto><ICMS><ICMSSN102><orig>0</orig><CSOSN>102</CSOSN></ICMSSN102></ICMS></imposto>
+      </det>
+      <det nItem="2">
+        <prod>
+          <cProd>00877</cProd><xProd>CARNE CONG DE SUINO COM OSSO - COSTELA - AURORA</xProd><NCM>02032900</NCM><CFOP>5102</CFOP>
+          <uCom>CX</uCom><qCom>1.0000</qCom><vUnCom>264.5000000000</vUnCom><vProd>264.50</vProd>
+          <vFrete>5.00</vFrete>
+        </prod>
+        <imposto><ICMS><ICMS10><orig>0</orig><CST>10</CST><vICMSST>12.30</vICMSST></ICMS10></ICMS></imposto>
+      </det>
+      <det nItem="3">
+        <prod>
+          <cProd>LT12</cProd><xProd>LEITE UHT INTEGRAL CX 12X1L</xProd><NCM>04012010</NCM><CFOP>5102</CFOP>
+          <uCom>CX</uCom><qCom>2</qCom><vUnCom>69.78</vUnCom><vProd>139.56</vProd>
+        </prod>
+        <imposto><ICMS><ICMSSN102><orig>0</orig><CSOSN>102</CSOSN></ICMSSN102></ICMS>
+          <IPI><IPITrib><vIPI>1.44</vIPI></IPITrib></IPI></imposto>
+      </det>
+      <det nItem="4">
+        <prod>
+          <cProd>TX01</cProd><xProd>TAXA DE ENTREGA</xProd><NCM>00000000</NCM><CFOP>5949</CFOP>
+          <uCom>UN</uCom><qCom>1</qCom><vUnCom>10.00</vUnCom><vProd>10.00</vProd>
+        </prod>
+        <imposto><ICMS><ICMSSN102><orig>0</orig><CSOSN>102</CSOSN></ICMSSN102></ICMS></imposto>
+      </det>
+      <total><ICMSTot><vProd>1409.94</vProd><vDesc>15.88</vDesc><vNF>1412.80</vNF></ICMSTot></total>
+    </infNFe>
+  </NFe>
+  <protNFe versao="4.00"><infProt><chNFe>53261012345678000199550010000123451000123459</chNFe><cStat>100</cStat></infProt></protNFe>
+</nfeProc>

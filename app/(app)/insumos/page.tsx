@@ -101,7 +101,10 @@ export default async function PaginaInsumos({ searchParams }: { searchParams: Pr
           <h1 className="text-xl font-semibold">Insumos</h1>
           <p className="text-sm text-muted-foreground">Custo da última compra validada em {s.casa.nome}</p>
         </div>
-        <Link href="/insumos/novo" className={buttonVariants({ className: "h-10 px-4" })}>Novo insumo</Link>
+        <div className="flex flex-wrap gap-2">
+          <Link href="/pendencias/notas" className={buttonVariants({ variant: "outline", className: "h-10 px-4" })}>Importar nota (XML)</Link>
+          <Link href="/insumos/novo" className={buttonVariants({ className: "h-10 px-4" })}>Novo insumo</Link>
+        </div>
       </div>
 
       <form className="grid gap-2 sm:grid-cols-[1fr_16rem_14rem_auto]" role="search">

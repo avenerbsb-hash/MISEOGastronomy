@@ -6,6 +6,7 @@ import { custoPorUnidade, dataCurta, numero, reais, rotuloUnidade, UNIDADES_POR_
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { FormAcao, BotaoEnviar } from "@/components/form-acao"
 import { Entrada, Selecao } from "@/components/campos"
+import { buttonVariants } from "@/components/ui/button"
 import { validarPreco } from "../insumos/actions"
 import { registrarRecebimento } from "./actions"
 
@@ -42,9 +43,12 @@ export default async function Pendencias() {
 
   return (
     <div className="grid gap-4">
-      <div>
-        <h1 className="text-xl font-semibold">Pendências</h1>
-        <p className="text-sm text-muted-foreground">{s.casa.nome}</p>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div>
+          <h1 className="text-xl font-semibold">Pendências</h1>
+          <p className="text-sm text-muted-foreground">{s.casa.nome}</p>
+        </div>
+        <Link href="/pendencias/notas" className={buttonVariants({ className: "h-10 px-4" })}>Importar nota (XML)</Link>
       </div>
 
       <Card>
