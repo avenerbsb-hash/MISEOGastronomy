@@ -5,6 +5,7 @@ import { exigirCasa, podeVerCustos } from "@/lib/sessao"
 import { custoPorUnidade, NOME_DIMENSAO, type Dimensao } from "@/lib/formato"
 import { buttonVariants } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
+import { BuscaLista } from "@/components/busca-lista"
 
 export const metadata: Metadata = { title: "Subprodutos" }
 
@@ -13,15 +14,19 @@ type Receita = {
   versoes_receita: { numero: number; status: "rascunho" | "aprovada" | "arquivada" }[]
 }
 
-export default async function Subprodutos() {
+export default async function Subprodutos({ searchParams }: { searchParams: Promise<{ q?: string }> }) {
   const s = await exigirCasa()
   const custos = podeVerCustos(s)
+  const { q = "" } = await searchParams
   const supabase = await createClient()
-  const { data } = await supabase
+  let consulta = supabase
     .from("receitas")
     .select("id, codigo, nome, dimensao_saida, ativo, versoes_receita(numero, status)")
     .eq("tipo", "subproduto")
     .order("nome")
+  const termo = q.trim().replace(/[%,()]/g, " ")
+  if (termo) consulta = consulta.or(`nome.ilike.%${termo}%,codigo.ilike.%${termo}%`)
+  const { data } = await consulta
   const receitas = (data ?? []) as Receita[]
 
   // Produção não busca custo nenhum
@@ -47,8 +52,10 @@ export default async function Subprodutos() {
         ) : null}
       </div>
 
+      <BuscaLista q={q} placeholder="Buscar subproduto por nome ou código" />
+
       {receitas.length === 0 ? (
-        <p className="rounded-xl border p-6 text-center text-sm text-muted-foreground">Nenhum subproduto cadastrado.</p>
+        <p className="rounded-xl border p-6 text-center text-sm text-muted-foreground">{q ? "Nenhum subproduto encontrado." : "Nenhum subproduto cadastrado."}</p>
       ) : (
         <ul className="divide-y rounded-xl border">
           {receitas.map((r) => {

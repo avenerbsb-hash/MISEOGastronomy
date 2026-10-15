@@ -7,6 +7,7 @@ import { percentual, reais } from "@/lib/formato"
 import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
 import { precosDasFichas } from "./dados"
+import { BuscaLista } from "@/components/busca-lista"
 
 export const metadata: Metadata = { title: "Fichas" }
 
@@ -18,13 +19,16 @@ type Receita = {
 // CMV acima disto aparece em vermelho
 const CMV_ALERTA = 30
 
-export default async function Fichas({ searchParams }: { searchParams: Promise<{ ordem?: string }> }) {
+export default async function Fichas({ searchParams }: { searchParams: Promise<{ ordem?: string; q?: string }> }) {
   const s = await exigirCasa()
   const custos = podeVerCustos(s)
-  const { ordem } = await searchParams
+  const { ordem, q = "" } = await searchParams
+  const termo = q.trim().replace(/[%,()]/g, " ")
   const supabase = await createClient()
   const [{ data }, cats] = await Promise.all([
-    supabase.from("receitas").select("id, codigo, nome, categoria_id, versoes_receita(numero, status)").eq("tipo", "final").order("nome"),
+    (termo
+      ? supabase.from("receitas").select("id, codigo, nome, categoria_id, versoes_receita(numero, status)").eq("tipo", "final").or(`nome.ilike.%${termo}%,codigo.ilike.%${termo}%`).order("nome")
+      : supabase.from("receitas").select("id, codigo, nome, categoria_id, versoes_receita(numero, status)").eq("tipo", "final").order("nome")),
     categorias("receita"),
   ])
   const nomes = nomesCategorias(cats)
@@ -53,14 +57,16 @@ export default async function Fichas({ searchParams }: { searchParams: Promise<{
         </div>
         {custos ? (
           <nav className="flex gap-1.5 text-sm" aria-label="Ordenar">
-            <Link href="/fichas" className={cn("rounded-full border px-3 py-1.5", ordem !== "cmv" && "border-foreground bg-foreground text-background")}>Nome (A–Z)</Link>
-            <Link href="/fichas?ordem=cmv" className={cn("rounded-full border px-3 py-1.5", ordem === "cmv" && "border-foreground bg-foreground text-background")}>Maior CMV primeiro</Link>
+            <Link href={q ? `/fichas?q=${encodeURIComponent(q)}` : "/fichas"} className={cn("rounded-full border px-3 py-1.5", ordem !== "cmv" && "border-foreground bg-foreground text-background")}>Nome (A–Z)</Link>
+            <Link href={`/fichas?ordem=cmv${q ? `&q=${encodeURIComponent(q)}` : ""}`} className={cn("rounded-full border px-3 py-1.5", ordem === "cmv" && "border-foreground bg-foreground text-background")}>Maior CMV primeiro</Link>
           </nav>
         ) : null}
       </div>
 
+      <BuscaLista q={q} placeholder="Buscar ficha por nome ou código" manter={ordem === "cmv" ? { ordem: "cmv" } : undefined} />
+
       {receitas.length === 0 ? (
-        <p className="rounded-xl border p-6 text-center text-sm text-muted-foreground">Nenhuma ficha cadastrada.</p>
+        <p className="rounded-xl border p-6 text-center text-sm text-muted-foreground">{q ? "Nenhuma ficha encontrada." : "Nenhuma ficha cadastrada."}</p>
       ) : (
         <ul className="divide-y rounded-xl border">
           {receitas.map((r) => {
