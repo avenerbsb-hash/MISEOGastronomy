@@ -28,6 +28,8 @@ export default async function PaginaImportarNotas() {
       </div>
       <ImportarNotas
         casa={s.casa.nome}
+        admin={s.admin}
+        totalCasas={s.casas.filter((c) => c.papel === "admin" || c.papel === "gestor").length}
         insumos={(insumos ?? []).map((i) => ({ id: i.id as string, nome: i.nome as string, dimensao: i.dimensao as Dimensao }))}
         categorias={cats.map((c) => ({ id: c.id, nome: nomes.get(c.id) ?? c.nome }))}
       />

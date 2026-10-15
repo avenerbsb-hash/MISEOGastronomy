@@ -69,10 +69,11 @@ async function buscarVinculos(supabase: Supabase, fornecedorId: string | null, d
   return vinculos
 }
 
-async function notaJaImportada(supabase: Supabase, chave: string): Promise<boolean> {
-  const { count } = await supabase
-    .from("itens_importacao").select("id", { count: "exact", head: true }).eq("lote_importacao", loteDaNota(chave))
-  return (count ?? 0) > 0
+// Casas em que esta nota já foi importada
+async function casasComNota(supabase: Supabase, chave: string): Promise<Set<string>> {
+  const { data } = await supabase
+    .from("itens_importacao").select("estabelecimento_id").eq("lote_importacao", loteDaNota(chave))
+  return new Set((data ?? []).map((l) => l.estabelecimento_id as string))
 }
 
 function lerArquivos(arquivos: Arquivo[]) {
@@ -96,7 +97,7 @@ function lerArquivos(arquivos: Arquivo[]) {
 
 // ------------------------------------------------------------------ 1. ler e pré-visualizar
 export async function lerNotas(arquivos: Arquivo[]): Promise<ResultadoLeitura> {
-  await exigirCustos()
+  const s = await exigirCustos()
   const supabase = await createClient()
   const { notas, erros } = lerArquivos(arquivos)
   const { data: forn } = await supabase.from("fornecedores").select("id, nome, documento").eq("ativo", true).order("nome")
@@ -108,7 +109,7 @@ export async function lerNotas(arquivos: Arquivo[]): Promise<ResultadoLeitura> {
     previas.push({
       arquivo,
       nota,
-      jaImportada: await notaJaImportada(supabase, nota.chave),
+      jaImportada: (await casasComNota(supabase, nota.chave)).has(s.casa.id),
       fornecedorSugerido: sugerido,
       vinculos: await buscarVinculos(supabase, sugerido?.id ?? null, nota.itens.map((i) => i.descricao)),
     })
@@ -141,11 +142,17 @@ async function garantirFornecedor(supabase: Supabase, nota: Nota, escolha: strin
   throw new Error("Não foi possível cadastrar o fornecedor.")
 }
 
-export async function importarNotas(arquivos: Arquivo[], escolhas: Record<string, EscolhaNota>): Promise<ResultadoImportacao> {
+export async function importarNotas(
+  arquivos: Arquivo[], escolhas: Record<string, EscolhaNota>, opcoes: { todasAsCasas: boolean } = { todasAsCasas: false },
+): Promise<ResultadoImportacao> {
   const s = await exigirCustos()
   const supabase = await createClient()
   const { notas } = lerArquivos(arquivos)
   const resultado: ResultadoImportacao = { notas: [], precosAtualizados: 0, aguardandoPesagem: 0, ignorados: 0 }
+  // Casas que recebem o preço: a atual ou todas em que o usuário é gestor/admin
+  const casasAlvo = opcoes.todasAsCasas
+    ? s.casas.filter((c) => c.papel === "admin" || c.papel === "gestor").map((c) => c.id)
+    : [s.casa.id]
 
   for (const { arquivo, nota } of notas) {
     const registrar = (ok: boolean, mensagem: string, fornecedor = nota.emitente.fantasia || nota.emitente.nome) =>
@@ -153,7 +160,9 @@ export async function importarNotas(arquivos: Arquivo[], escolhas: Record<string
     try {
       const escolha = escolhas[nota.chave]
       if (!escolha) { registrar(false, "Nota não conferida."); continue }
-      if (await notaJaImportada(supabase, nota.chave)) { registrar(false, "Esta nota já tinha sido importada."); continue }
+      const jaFeitas = await casasComNota(supabase, nota.chave)
+      const casasDaNota = casasAlvo.filter((c) => !jaFeitas.has(c))
+      if (!casasDaNota.length) { registrar(false, "Esta nota já tinha sido importada."); continue }
 
       const fornecedor = await garantirFornecedor(supabase, nota, escolha.fornecedor)
       const conhecidos = await buscarVinculos(supabase, fornecedor.id, nota.itens.map((i) => i.descricao))
@@ -211,24 +220,30 @@ export async function importarNotas(arquivos: Arquivo[], escolhas: Record<string
         if (error) throw new Error(traduzirErro(error))
       }
 
-      // Todas as linhas da nota ficam registradas (base da conferência e do histórico)
-      const linhas = finais.map(({ item, decisao }) => ({
-        lote_importacao: loteDaNota(nota.chave),
-        estabelecimento_id: s.casa.id,
-        fornecedor_id: fornecedor.id,
-        data_compra: nota.dataEmissao,
-        documento_ref: `NF ${nota.numero}${nota.serie ? `-${nota.serie}` : ""}`,
-        ncm: item.ncm,
-        descricao_original: item.descricao,
-        unidade_nota: item.unidade || "UN",
-        quantidade_nota: item.quantidade,
-        preco_unitario_nota: Math.round(item.valorUnitario * 10000) / 10000,
-        valor_total: item.valorTotal,
-        insumo_id: decisao && decisao.tipo !== "ignorar" ? decisao.insumoId : null,
-        status: decisao?.tipo === "ignorar" ? "ignorado" : "pendente",
-        motivo_pendencia: decisao?.tipo === "pesagem" ? "Aguardando pesagem/contagem no recebimento"
-          : decisao?.tipo === "ignorar" ? "Não é insumo (ignorado na importação)" : null,
-      }))
+      // Linhas da nota em cada casa: conversões vão para todas as casas escolhidas;
+      // pesagem e itens ignorados ficam só na casa que recebeu a mercadoria
+      const naCasaAtual = casasDaNota.includes(s.casa.id)
+      const linhas = casasDaNota.flatMap((estab) =>
+        finais
+          .filter(({ decisao }) => estab === s.casa.id || decisao?.tipo === "conversao")
+          .map(({ item, decisao }) => ({
+            lote_importacao: loteDaNota(nota.chave),
+            estabelecimento_id: estab,
+            fornecedor_id: fornecedor.id,
+            data_compra: nota.dataEmissao,
+            documento_ref: `NF ${nota.numero}${nota.serie ? `-${nota.serie}` : ""}`,
+            ncm: item.ncm,
+            descricao_original: item.descricao,
+            unidade_nota: item.unidade || "UN",
+            quantidade_nota: item.quantidade,
+            preco_unitario_nota: Math.round(item.valorUnitario * 10000) / 10000,
+            valor_total: item.valorTotal,
+            insumo_id: decisao && decisao.tipo !== "ignorar" ? decisao.insumoId : null,
+            status: decisao?.tipo === "ignorar" ? "ignorado" : "pendente",
+            motivo_pendencia: decisao?.tipo === "pesagem" ? "Aguardando pesagem/contagem no recebimento"
+              : decisao?.tipo === "ignorar" ? "Não é insumo (ignorado na importação)" : null,
+          })),
+      )
       const { error: eLinhas } = await supabase.from("itens_importacao").insert(linhas)
       if (eLinhas) throw new Error(traduzirErro(eLinhas))
 
@@ -248,8 +263,8 @@ export async function importarNotas(arquivos: Arquivo[], escolhas: Record<string
         if (error) falhas.push(`${c.descricao}: ${traduzirErro(error)}`)
         else atualizados += Number(data ?? 0)
       }
-      const pesagem = finais.filter((f) => f.decisao?.tipo === "pesagem").length
-      const ignorados = finais.filter((f) => f.decisao?.tipo === "ignorar").length
+      const pesagem = naCasaAtual ? finais.filter((f) => f.decisao?.tipo === "pesagem").length : 0
+      const ignorados = naCasaAtual ? finais.filter((f) => f.decisao?.tipo === "ignorar").length : 0
       resultado.precosAtualizados += atualizados
       resultado.aguardandoPesagem += pesagem
       resultado.ignorados += ignorados
@@ -257,7 +272,7 @@ export async function importarNotas(arquivos: Arquivo[], escolhas: Record<string
         falhas.length === 0,
         falhas.length
           ? `Importada, mas sem preço para: ${falhas.join("; ")}`
-          : `${atualizados} preço(s) atualizado(s), ${pesagem} aguardando pesagem, ${ignorados} ignorado(s).`,
+          : `${atualizados} preço(s) atualizado(s) em ${casasDaNota.length} casa(s), ${pesagem} aguardando pesagem, ${ignorados} ignorado(s).`,
         fornecedor.nome,
       )
     } catch (e) {

@@ -11,6 +11,7 @@ import {
   type Arquivo, type EscolhaNota, type PreviaNota, type ResultadoImportacao, type ResultadoLeitura, type Vinculo,
 } from "@/lib/importacao"
 import { cn } from "@/lib/utils"
+import { emLotes, lerArquivosEscolhidos } from "@/lib/arquivos-notas"
 import { importarNotas, lerNotas, vinculosDoFornecedor } from "./actions"
 
 type InsumoOpcao = { id: string; nome: string; dimensao: Dimensao }
@@ -27,9 +28,12 @@ function rascunhoValido(r: Rascunho | undefined, insumos: Map<string, InsumoOpca
   return numeroDigitado(r.quantidade) > 0 && !!r.unidade
 }
 
-export function ImportarNotas({ insumos: insumosIniciais, categorias, casa }: {
-  insumos: InsumoOpcao[]; categorias: CategoriaOpcao[]; casa: string
+export function ImportarNotas({ insumos: insumosIniciais, categorias, casa, totalCasas, admin }: {
+  insumos: InsumoOpcao[]; categorias: CategoriaOpcao[]; casa: string; totalCasas: number; admin: boolean
 }) {
+  const [todasAsCasas, setTodasAsCasas] = useState(admin && totalCasas > 1)
+  const [progresso, setProgresso] = useState<string | null>(null)
+  const [avisos, setAvisos] = useState<string[]>([])
   const [arquivos, setArquivos] = useState<Arquivo[]>([])
   const [leitura, setLeitura] = useState<ResultadoLeitura | null>(null)
   const [estados, setEstados] = useState<Record<string, EstadoNota>>({})
@@ -43,11 +47,27 @@ export function ImportarNotas({ insumos: insumosIniciais, categorias, casa }: {
   // ---------------------------------------------------------------- 1. enviar arquivos
   async function escolherArquivos(lista: FileList | null) {
     if (!lista?.length) return
-    setErro(null); setResultado(null)
-    const lidos = await Promise.all([...lista].map(async (f) => ({ nome: f.name, conteudo: await f.text() })))
+    setErro(null); setResultado(null); setLeitura(null)
+    const { arquivos: lidos, avisos: avisosArquivos } = await lerArquivosEscolhidos([...lista])
+    setAvisos(avisosArquivos)
+    if (!lidos.length) return
     iniciar(async () => {
       try {
-        const r = await lerNotas(lidos)
+        // Lê em lotes para não estourar o tamanho de cada envio ao servidor
+        const r: ResultadoLeitura = { previas: [], erros: [], fornecedores: [] }
+        const lotes = emLotes(lidos, 15)
+        for (const [k, lote] of lotes.entries()) {
+          setProgresso(`Lendo notas… ${Math.min((k + 1) * 15, lidos.length)} de ${lidos.length}`)
+          const parte = await lerNotas(lote)
+          const chaves = new Set(r.previas.map((p) => p.nota.chave))
+          for (const p of parte.previas) {
+            if (chaves.has(p.nota.chave)) r.erros.push({ arquivo: p.arquivo, erro: "Mesma nota enviada duas vezes." })
+            else r.previas.push(p)
+          }
+          r.erros.push(...parte.erros)
+          if (!r.fornecedores.length) r.fornecedores = parte.fornecedores
+        }
+        setProgresso(null)
         setArquivos(lidos)
         setLeitura(r)
         const novos: Record<string, EstadoNota> = {}
@@ -56,6 +76,7 @@ export function ImportarNotas({ insumos: insumosIniciais, categorias, casa }: {
         }
         setEstados(novos)
       } catch {
+        setProgresso(null)
         setErro("Não foi possível ler as notas. Tente de novo.")
       }
     })
@@ -132,13 +153,26 @@ export function ImportarNotas({ insumos: insumosIniciais, categorias, casa }: {
       }
       escolhas[p.nota.chave] = { fornecedor: e.fornecedor, decisoes }
     }
+    const selecionados = arquivos.filter((a) => paraImportar.some((p) => p.arquivo === a.nome))
     iniciar(async () => {
+      const total: ResultadoImportacao = { notas: [], precosAtualizados: 0, aguardandoPesagem: 0, ignorados: 0 }
       try {
-        const r = await importarNotas(arquivos.filter((a) => paraImportar.some((p) => p.arquivo === a.nome)), escolhas)
-        setResultado(r)
+        for (const [k, lote] of emLotes(selecionados, 10).entries()) {
+          setProgresso(`Importando… ${Math.min((k + 1) * 10, selecionados.length)} de ${selecionados.length} nota(s)`)
+          const r = await importarNotas(lote, escolhas, { todasAsCasas })
+          total.notas.push(...r.notas)
+          total.precosAtualizados += r.precosAtualizados
+          total.aguardandoPesagem += r.aguardandoPesagem
+          total.ignorados += r.ignorados
+        }
+        setResultado(total)
         setLeitura(null)
       } catch {
-        setErro("Não foi possível importar. Nada foi perdido: tente de novo.")
+        // Notas já importadas são puladas numa nova tentativa (chave de acesso)
+        if (total.notas.length) setResultado(total)
+        setErro("A importação parou no meio. Envie as notas de novo: as que já entraram serão puladas.")
+      } finally {
+        setProgresso(null)
       }
     })
   }
@@ -173,16 +207,27 @@ export function ImportarNotas({ insumos: insumosIniciais, categorias, casa }: {
   return (
     <div className="grid gap-4">
       <label className={cn("grid cursor-pointer place-items-center gap-1 rounded-xl border-2 border-dashed p-6 text-center hover:bg-muted/40", pendente && "opacity-60")}>
-        <span className="font-medium">Escolher XML das notas fiscais</span>
-        <span className="text-sm text-muted-foreground">Pode selecionar várias de uma vez (até 20). Importando em {casa}.</span>
+        <span className="font-medium">Escolher XML das notas fiscais (ou o .zip exportado)</span>
+        <span className="text-sm text-muted-foreground">
+          Pode selecionar vários arquivos ou um .zip com todas as notas do período (até 300). Casa atual: {casa}.
+        </span>
         <input
-          type="file" accept=".xml,text/xml,application/xml" multiple className="sr-only"
+          type="file" accept=".xml,.zip,text/xml,application/xml,application/zip" multiple className="sr-only"
           disabled={pendente}
           onChange={(e) => { escolherArquivos(e.target.files); e.target.value = "" }}
         />
       </label>
-      {pendente && !leitura ? <p className="text-sm text-muted-foreground">Lendo as notas…</p> : null}
+      {progresso ? <p role="status" className="text-sm font-medium">{progresso}</p> : null}
       {erro ? <p role="alert" className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">{erro}</p> : null}
+      {avisos.map((a) => (
+        <p key={a} className="rounded-md bg-amber-500/10 px-3 py-2 text-sm text-amber-800 dark:text-amber-300">{a}</p>
+      ))}
+      {leitura?.previas.length ? (
+        <p className="text-sm text-muted-foreground">
+          {leitura.previas.length} nota(s) lida(s) · {paraImportar.length} para importar
+          {leitura.previas.length > paraImportar.length ? ` · ${leitura.previas.length - paraImportar.length} já importada(s)` : ""}
+        </p>
+      ) : null}
 
       {leitura?.erros.map((e) => (
         <p key={e.arquivo + e.erro} className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
@@ -322,6 +367,12 @@ export function ImportarNotas({ insumos: insumosIniciais, categorias, casa }: {
 
       {paraImportar.length ? (
         <div className="sticky bottom-0 grid gap-2 border-t bg-background/95 py-3 backdrop-blur sm:flex sm:items-center sm:justify-between">
+          {totalCasas > 1 ? (
+            <label className="flex items-center gap-2 text-sm">
+              <input type="checkbox" className="size-4" checked={todasAsCasas} onChange={(e) => setTodasAsCasas(e.target.checked)} />
+              Aplicar os preços em todas as {totalCasas} casas (pesagem fica só em {casa})
+            </label>
+          ) : null}
           <p className="text-sm text-muted-foreground">
             {pendencias.length
               ? `Falta definir ${pendencias.length} item(ns) para importar.`
