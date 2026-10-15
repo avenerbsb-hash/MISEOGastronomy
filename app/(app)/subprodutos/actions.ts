@@ -13,6 +13,13 @@ const unidade = z.enum(["mg", "g", "kg", "ml", "l", "un"], { message: "Escolha a
 const positivo = (msg: string) => decimal.pipe(z.number().positive(msg))
 const UNIDADE_BASE = { massa: "g", volume: "ml", contagem: "un" } as const
 
+// As telas de rascunho e versões servem subprodutos e fichas finais
+function revalidarReceita(receitaId: string) {
+  revalidatePath(`/subprodutos/${receitaId}`, "layout")
+  revalidatePath(`/fichas/${receitaId}`, "layout")
+  revalidatePath("/fichas")
+}
+
 // ------------------------------------------------------------------ novo subproduto (receita + versão 1 em rascunho)
 const esquemaNovo = z.object({
   codigo: texto(30).min(1, "Informe o código."),
@@ -77,7 +84,7 @@ export async function criarRascunho(receitaId: string): Promise<Estado> {
     })
     if (error) return { erro: traduzirErro(error) }
   }
-  revalidatePath(`/subprodutos/${receitaId}`, "layout")
+  revalidarReceita(receitaId)
   return { ok: "Rascunho criado." }
 }
 
@@ -112,7 +119,7 @@ export async function salvarRascunho(versaoId: string, receitaId: string, _: Est
   }).eq("id", versaoId).eq("status", "rascunho").select("id")
   if (error) return { erro: traduzirErro(error) }
   if (!data?.length) return { erro: "Este rascunho já foi aprovado ou não existe mais. Recarregue a página." }
-  revalidatePath(`/subprodutos/${receitaId}`, "layout")
+  revalidarReceita(receitaId)
   return { ok: "Rascunho salvo." }
 }
 
@@ -150,7 +157,7 @@ export async function adicionarComponente(versaoId: string, receitaId: string, _
     observacao: v.data.observacao ?? null,
   })
   if (error) return { erro: traduzirErro(error) }
-  revalidatePath(`/subprodutos/${receitaId}/rascunho`)
+  revalidarReceita(receitaId)
   return { ok: "Componente adicionado." }
 }
 
@@ -159,7 +166,7 @@ export async function removerComponente(componenteId: string, receitaId: string)
   const supabase = await createClient()
   const { error } = await supabase.from("componentes_receita").delete().eq("id", componenteId)
   if (error) return { erro: traduzirErro(error) }
-  revalidatePath(`/subprodutos/${receitaId}/rascunho`)
+  revalidarReceita(receitaId)
   return null
 }
 
@@ -171,7 +178,9 @@ export async function aprovarVersao(versaoId: string, receitaId: string, _: Esta
   const { error } = await supabase.rpc("aprovar_versao", { p_versao: versaoId, p_motivo: motivo ?? null })
   if (error) return { erro: traduzirErro(error) }
   revalidatePath("/subprodutos", "layout")
-  redirect(`/subprodutos/${receitaId}`)
+  revalidarReceita(receitaId)
+  const { data: r } = await supabase.from("receitas").select("tipo").eq("id", receitaId).single()
+  redirect(r?.tipo === "final" ? `/fichas/${receitaId}` : `/subprodutos/${receitaId}`)
 }
 
 // ------------------------------------------------------------------ lote de produção (equipe da casa)

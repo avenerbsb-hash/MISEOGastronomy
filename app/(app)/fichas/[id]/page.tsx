@@ -1,5 +1,4 @@
 import Link from "next/link"
-import { notFound } from "next/navigation"
 import { createClient } from "@/lib/supabase/server"
 import { exigirCasa, podeVerCustos } from "@/lib/sessao"
 import { percentual, reais } from "@/lib/formato"
@@ -13,23 +12,14 @@ export default async function FichaFinal({ params }: { params: Promise<{ id: str
   const s = await exigirCasa()
   const { id } = await params
   const supabase = await createClient()
-  const [{ data: r }, { data: producao }] = await Promise.all([
-    supabase.from("receitas").select("codigo, nome, tipo").eq("id", id).maybeSingle(),
-    supabase.from("vw_ficha_producao").select("*").eq("receita_id", id).order("ordem"),
-  ])
-  if (!r || r.tipo !== "final") notFound()
+  const { data: producao } = await supabase.from("vw_ficha_producao").select("*").eq("receita_id", id).order("ordem")
   const linhasProducao = (producao ?? []) as LinhaProducao[]
 
-  const cabecalho = (
-    <>
-      <div className="mb-2 text-sm"><Link href="/fichas" className="text-muted-foreground hover:underline">← Fichas</Link></div>
-      <h1 className="text-xl font-semibold">{r.nome}</h1>
-      <p className="mb-3 text-sm text-muted-foreground">{r.codigo}</p>
-    </>
-  )
-
   // Produção: só a ficha sem valores. Nenhuma chamada de custo acontece neste ramo.
-  if (!podeVerCustos(s)) return <div>{cabecalho}<FichaProducao linhas={linhasProducao} /></div>
+  if (!podeVerCustos(s)) return <FichaProducao linhas={linhasProducao} />
+  if (!linhasProducao.length) {
+    return <p className="text-sm text-muted-foreground">Esta ficha ainda não tem versão aprovada. <Link href={`/fichas/${id}/editar`} className="underline">Abrir o rascunho</Link>.</p>
+  }
 
   const [custo, gerencial, precos] = await Promise.all([
     supabase.rpc("custo_receita", { p_receita: id, p_estab: s.casa.id }),
@@ -41,7 +31,6 @@ export default async function FichaFinal({ params }: { params: Promise<{ id: str
 
   return (
     <div className="grid gap-4">
-      <div>{cabecalho}</div>
       <Card>
         <CardHeader>
           <CardTitle>Custo em {s.casa.nome}</CardTitle>
@@ -64,7 +53,7 @@ export default async function FichaFinal({ params }: { params: Promise<{ id: str
                 </div>
                 <div><div className="text-xs text-muted-foreground">Margem</div><div className="text-xl tabular-nums">{reais(p.margem)}</div></div>
               </>
-            ) : <span className="text-sm text-muted-foreground">Fora do cardápio desta casa</span>}
+            ) : <Link href={`/fichas/${id}/preco`} className="text-sm underline">Definir preço de venda nesta casa</Link>}
           </div>
           <TabelaCustos linhas={linhas} />
         </CardContent>
