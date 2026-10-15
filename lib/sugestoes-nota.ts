@@ -60,7 +60,8 @@ export function sugerirConversao(
 export function dimensaoProvavel(descricao: string, unidadeNota: string): Dimensao {
   const un = unidadeNota.toUpperCase()
   if (UNIDADE_DA_NOTA[un] && un !== "UN" && un !== "UND" && un !== "UNID") return UNIDADE_DA_NOTA[un].dimensao
-  if (porEmbalagem(descricao, un) || /\bLATA|LT\b/i.test(descricao)) return "contagem"
+  // "LT" sozinho é lata; "1LT" é litro
+  if (porEmbalagem(descricao, un) || /\bLATA\b|\bLT\b/i.test(descricao)) return "contagem"
   return tamanho(descricao)?.dimensao ?? "contagem"
 }
 

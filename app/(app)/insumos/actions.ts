@@ -70,6 +70,24 @@ export async function salvarInsumo(id: string | null, _: Estado, dados: FormData
   redirect(`/insumos/${r.data.id}`)
 }
 
+// ------------------------------------------------------------------ excluir (só se nunca foi usado)
+export async function excluirInsumo(id: string, _: Estado, dados: FormData): Promise<Estado> {
+  await exigirCustos()
+  if (dados.get("confirmar") !== "on") return { erro: "Marque a confirmação para excluir." }
+  const supabase = await createClient()
+  const { data, error } = await supabase.from("insumos").delete().eq("id", id).select("id")
+  if (error) {
+    return {
+      erro: error.code === "23503"
+        ? "Este insumo já tem preços, notas ou fichas e não pode ser excluído (o histórico é preservado). Desmarque “Ativo” acima para tirá-lo das listas."
+        : traduzirErro(error),
+    }
+  }
+  if (!data?.length) return { erro: "Não foi possível excluir: sem permissão ou o insumo já não existe." }
+  revalidatePath("/insumos")
+  redirect("/insumos")
+}
+
 // ------------------------------------------------------------------ cadastro rápido (de dentro do rascunho)
 export type InsumoNovo = { id: string; nome: string; dimensao: Dimensao }
 export type EstadoNovoInsumo = { erro?: string; novo?: InsumoNovo } | null
