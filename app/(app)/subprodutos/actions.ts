@@ -102,15 +102,16 @@ export async function salvarRascunho(versaoId: string, receitaId: string, _: Est
   })
   if (!v.success) return { erro: v.error.issues[0].message }
   const supabase = await createClient()
-  const { error } = await supabase.from("versoes_receita").update({
+  const { data, error } = await supabase.from("versoes_receita").update({
     rendimento_quantidade: v.data.rendimento_quantidade,
     rendimento_unidade: v.data.rendimento_unidade,
     porcao_descricao: v.data.porcao_descricao ?? null,
     modo_preparo: v.data.modo_preparo ?? null,
     validade_horas: v.data.validade_horas ?? null,
     observacoes: v.data.observacoes ?? null,
-  }).eq("id", versaoId).eq("status", "rascunho")
+  }).eq("id", versaoId).eq("status", "rascunho").select("id")
   if (error) return { erro: traduzirErro(error) }
+  if (!data?.length) return { erro: "Este rascunho já foi aprovado ou não existe mais. Recarregue a página." }
   revalidatePath(`/subprodutos/${receitaId}`, "layout")
   return { ok: "Rascunho salvo." }
 }

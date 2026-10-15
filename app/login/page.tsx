@@ -22,7 +22,7 @@ export default function PaginaLogin() {
             <Campo rotulo="Senha">
               <Entrada name="senha" type="password" autoComplete="current-password" required />
             </Campo>
-            <BotaoEnviar className="w-full">Entrar</BotaoEnviar>
+            <BotaoEnviar className="w-full" enviando="Entrando…">Entrar</BotaoEnviar>
           </FormAcao>
         </CardContent>
       </Card>

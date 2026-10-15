@@ -31,18 +31,19 @@ export function FormAcao({
 }
 
 export function BotaoEnviar({
-  children, variant, className, name, value,
+  children, variant, className, name, value, enviando = "Salvando…",
 }: {
   children: React.ReactNode
   variant?: "default" | "outline" | "secondary" | "destructive" | "ghost"
   className?: string
   name?: string
   value?: string
+  enviando?: string
 }) {
   const { pending } = useFormStatus()
   return (
     <Button type="submit" variant={variant} disabled={pending} className={cn("h-10 px-4", className)} name={name} value={value}>
-      {pending ? "Salvando…" : children}
+      {pending ? enviando : children}
     </Button>
   )
 }
