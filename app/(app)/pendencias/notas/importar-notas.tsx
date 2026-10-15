@@ -5,9 +5,11 @@ import Link from "next/link"
 import { Button, buttonVariants } from "@/components/ui/button"
 import { Entrada, Selecao } from "@/components/campos"
 import { NovoInsumoRapido, type CategoriaOpcao } from "@/components/novo-insumo-rapido"
+import { BuscaInsumo } from "@/components/busca-insumo"
+import { dimensaoProvavel, nomeSugerido, sugerirConversao } from "@/lib/sugestoes-nota"
 import { dataCurta, numero, reais, rotuloUnidade, UNIDADES_POR_DIMENSAO, type Dimensao } from "@/lib/formato"
 import {
-  chaveDescricao, UNIDADE_NOTA_PADRAO,
+  chaveDescricao,
   type Arquivo, type EscolhaNota, type PreviaNota, type ResultadoImportacao, type ResultadoLeitura, type Vinculo,
 } from "@/lib/importacao"
 import { cn } from "@/lib/utils"
@@ -51,7 +53,7 @@ export function ImportarNotas({ insumos: insumosIniciais, categorias, casa, tota
   const [decisoes, setDecisoes] = useState<Record<string, Rascunho>>({})
   const [alterar, setAlterar] = useState<Record<string, boolean>>({})
   const [insumos, setInsumos] = useState<InsumoOpcao[]>(insumosIniciais)
-  const [cadastrando, setCadastrando] = useState<{ grupo: string; unidade: string; nome: string; dimensao?: Dimensao } | null>(null)
+  const [cadastrando, setCadastrando] = useState<{ grupo: string; descricao: string; unidade: string; nome: string; dimensao?: Dimensao } | null>(null)
   const [resultado, setResultado] = useState<ResultadoImportacao | null>(null)
   const [erro, setErro] = useState<string | null>(null)
   const [pendente, iniciar] = useTransition()
@@ -131,19 +133,18 @@ export function ImportarNotas({ insumos: insumosIniciais, categorias, casa, tota
       [grupo]: { ...(atual[grupo] ?? { tipo: "conversao", insumoId: "", quantidade: "", unidade: "" }), ...mudar },
     }))
 
-  // Ao escolher o insumo, sugere a conversão quando a unidade da nota já é kg, L, un…
-  const escolherInsumo = useCallback((grupo: string, unidadeNota: string, insumoId: string, lista: Map<string, InsumoOpcao>) => {
+  // Ao escolher o insumo, sugere a conversão lendo a descrição ("750ML", "C/12", "FD/0030"…)
+  const escolherInsumo = useCallback((grupo: string, descricao: string, unidadeNota: string, insumoId: string, lista: Map<string, InsumoOpcao>) => {
     const ins = lista.get(insumoId)
-    const padrao = UNIDADE_NOTA_PADRAO[unidadeNota]
     const unidades = ins ? UNIDADES_POR_DIMENSAO[ins.dimensao].map((u) => u.codigo) : []
-    const sugere = ins && padrao && padrao.dimensao === ins.dimensao
+    const sugestao = ins ? sugerirConversao(descricao, unidadeNota, ins.dimensao) : null
     setDecisoes((atual) => ({
       ...atual,
       [grupo]: {
         ...(atual[grupo] ?? { tipo: "conversao", insumoId: "", quantidade: "", unidade: "" }),
         insumoId,
-        quantidade: sugere ? "1" : "",
-        unidade: sugere ? padrao.unidade : unidades[0] ?? "",
+        quantidade: sugestao ? String(sugestao.quantidade).replace(".", ",") : "",
+        unidade: sugestao?.unidade ?? unidades[0] ?? "",
       },
     }))
   }, [])
@@ -161,7 +162,7 @@ export function ImportarNotas({ insumos: insumosIniciais, categorias, casa, tota
     if (cadastrando) {
       const lista = new Map(porId)
       lista.set(novo.id, novo)
-      escolherInsumo(cadastrando.grupo, cadastrando.unidade, novo.id, lista)
+      escolherInsumo(cadastrando.grupo, cadastrando.descricao, cadastrando.unidade, novo.id, lista)
     }
     setCadastrando(null)
   }, [cadastrando, porId, escolherInsumo])
@@ -225,17 +226,17 @@ export function ImportarNotas({ insumos: insumosIniciais, categorias, casa, tota
           ))}
         </div>
         {tipo !== "ignorar" ? (
-          <div className="grid gap-2 sm:grid-cols-[1fr_auto]">
-            <Selecao aria-label="Insumo" value={r?.insumoId ?? ""} onChange={(ev) => escolherInsumo(g.chave, g.unidade, ev.target.value, porId)}>
-              <option value="" disabled>Qual insumo é este item?</option>
-              {insumos.map((i) => <option key={i.id} value={i.id}>{i.nome}</option>)}
-            </Selecao>
-            <button
-              type="button" className="justify-self-start text-sm font-medium text-primary underline-offset-4 hover:underline"
-              onClick={() => setCadastrando({ grupo: g.chave, unidade: g.unidade, nome: g.descricao, dimensao: UNIDADE_NOTA_PADRAO[g.unidade]?.dimensao })}
-            >
-              + Cadastrar novo insumo
-            </button>
+          <div className="grid gap-1">
+            <BuscaInsumo
+              insumos={insumos}
+              valor={r?.insumoId ?? ""}
+              referencia={g.descricao}
+              aoEscolher={(id) => (id ? escolherInsumo(g.chave, g.descricao, g.unidade, id, porId) : atualizarDecisao(g.chave, { insumoId: "", quantidade: "" }))}
+              aoCadastrar={(texto) => setCadastrando({
+                grupo: g.chave, descricao: g.descricao, unidade: g.unidade,
+                nome: texto.trim() || nomeSugerido(g.descricao), dimensao: dimensaoProvavel(g.descricao, g.unidade),
+              })}
+            />
           </div>
         ) : null}
         {tipo === "conversao" && ins ? (
@@ -254,6 +255,7 @@ export function ImportarNotas({ insumos: insumosIniciais, categorias, casa, tota
         ) : null}
         {cadastrando?.grupo === g.chave ? (
           <NovoInsumoRapido
+            key={cadastrando.nome}
             categorias={categorias} nomeInicial={cadastrando.nome} dimensaoInicial={cadastrando.dimensao}
             aoCancelar={() => setCadastrando(null)} aoCriar={aoCriarInsumo}
           />
