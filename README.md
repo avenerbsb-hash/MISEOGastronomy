@@ -1,6 +1,7 @@
 
-Fichas Técnicas — banco do MVP
-Ordem para aplicar no Supabase (SQL Editor ou supabase db push):
+MISEO — Fichas Técnicas e Cardápios (Grupo JF+)
+App (Next.js 15): copie .env.example para .env.local e preencha NEXT_PUBLIC_SUPABASE_URL e NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY (Project Settings → API; nunca a chave secreta). Depois: npm install e npm run dev (http://localhost:3000). Entre com um usuário que tenha linha em perfis (admin) ou em acessos_estabelecimento. Todo custo e CMV vem das funções do banco; a produção só vê vw_ficha_producao. Deploy na Vercel com as mesmas duas variáveis.
+Banco — ordem para aplicar no Supabase (SQL Editor ou supabase db push):
 supabase/migrations/0001_fichas_tecnicas.sql — tabelas, regras, cálculo, segurança.
 supabase/migrations/0002_importacao_e_referencia.sql — itens de nota importados, preço de referência entre casas.
 supabase/migrations/0003_recebimento_quantidade_variavel.sql — itens medidos no recebimento, função registrar_recebimento.

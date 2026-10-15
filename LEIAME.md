@@ -1,4 +1,18 @@
-# Fichas Técnicas — banco do MVP
+# MISEO — Fichas Técnicas e Cardápios (Grupo JF+)
+
+## App (Next.js 15)
+
+1. Copie `.env.example` para `.env.local` e preencha `NEXT_PUBLIC_SUPABASE_URL` e
+   `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` (Project Settings → API; nunca a chave secreta).
+2. `npm install` e `npm run dev` → http://localhost:3000
+3. Entre com um usuário do Supabase que tenha linha em `perfis` (admin) ou em `acessos_estabelecimento`.
+
+Fatia 1: login, seletor de casa, Insumos (custo, variação, compras, validação, histórico, fichas impactadas),
+Pendências (validação e notas aguardando pesagem) e Subprodutos (rascunho com prévia de custo, aprovação,
+versões e lotes). Todo custo e CMV vem das funções do banco; a equipe de produção só vê `vw_ficha_producao`.
+Deploy: Vercel, com as mesmas duas variáveis de ambiente.
+
+## Banco
 
 Ordem para aplicar no Supabase (SQL Editor ou `supabase db push`):
 1. `supabase/migrations/0001_fichas_tecnicas.sql` — tabelas, regras, cálculo, segurança.
