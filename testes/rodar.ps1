@@ -53,6 +53,7 @@ try {
   P aceite  'testes/50_correcoes_0005.sql'
   P aceite  'testes/60_correcoes_0006.sql'
   P aceite  'testes/80_variacao_fichas.sql'
+  P aceite  'testes/90_alertas_aumento.sql'
   P seed    'supabase/seed/01_insumos_giuli.sql'
   P seed    'testes/20_seed_giuli.sql'
   P seed    'supabase/seed/03_categorias.sql' -Silencioso

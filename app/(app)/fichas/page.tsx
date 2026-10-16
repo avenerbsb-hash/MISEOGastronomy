@@ -8,7 +8,8 @@ import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
 import { precosDasFichas } from "./dados"
 import { BuscaLista } from "@/components/busca-lista"
-import { variacoesDasReceitas } from "@/lib/dados"
+import { emAlerta, variacoesDasReceitas } from "@/lib/dados"
+import { AvisoAlertas } from "@/components/aviso-alertas"
 import { BadgeVariacao } from "@/components/variacao"
 
 export const metadata: Metadata = { title: "Fichas" }
@@ -66,6 +67,8 @@ export default async function Fichas({ searchParams }: { searchParams: Promise<{
           </nav>
         ) : null}
       </div>
+
+      <AvisoAlertas quantidade={[...variacoes.values()].filter(emAlerta).length} um="ficha técnica subiu" varios="fichas técnicas subiram" ancora="fichas" />
 
       <BuscaLista q={q} placeholder="Buscar ficha por nome ou código" manter={ordem === "cmv" ? { ordem: "cmv" } : undefined} />
 

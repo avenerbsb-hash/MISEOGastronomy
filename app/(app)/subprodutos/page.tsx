@@ -6,7 +6,8 @@ import { custoPorUnidade, NOME_DIMENSAO, type Dimensao } from "@/lib/formato"
 import { buttonVariants } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { BuscaLista } from "@/components/busca-lista"
-import { variacoesDasReceitas } from "@/lib/dados"
+import { emAlerta, variacoesDasReceitas } from "@/lib/dados"
+import { AvisoAlertas } from "@/components/aviso-alertas"
 import { BadgeVariacao } from "@/components/variacao"
 
 export const metadata: Metadata = { title: "Subprodutos" }
@@ -54,6 +55,8 @@ export default async function Subprodutos({ searchParams }: { searchParams: Prom
           <Link href="/subprodutos/novo" className={buttonVariants({ className: "h-10 px-4" })}>Novo subproduto</Link>
         ) : null}
       </div>
+
+      <AvisoAlertas quantidade={[...variacoes.values()].filter(emAlerta).length} um="subproduto subiu" varios="subprodutos subiram" ancora="subprodutos" />
 
       <BuscaLista q={q} placeholder="Buscar subproduto por nome ou código" />
 

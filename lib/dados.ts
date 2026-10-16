@@ -98,3 +98,39 @@ export function nomesCategorias(cats: Categoria[]): Map<string, string> {
     }),
   )
 }
+
+// ------------------------------------------------------------------ alertas de aumento (migração 0008)
+// Alta acima de LIMITE_ALERTA % com compra nos últimos DIAS_ALERTA dias
+export const LIMITE_ALERTA = 10
+export const DIAS_ALERTA = 60
+
+export type AlertaInsumo = {
+  insumo_id: string; insumo: string; unidade_base: string
+  custo_atual: number; custo_anterior: number; variacao_pct: number; data_referencia: string
+  qtd_fichas: number; qtd_subprodutos: number
+  receitas: { id: string; nome: string; tipo: "final" | "subproduto" }[]
+}
+
+export type AlertaFicha = {
+  receita_id: string; nome: string; tipo: "final" | "subproduto"; dimensao: Dimensao
+  custo_atual: number; custo_anterior: number; variacao_pct: number; data_referencia: string
+  insumos: string | null; preco_venda: number | null; cmv_atual_pct: number | null; cmv_anterior_pct: number | null
+}
+
+export async function alertasDaCasa(estab: string, dias = DIAS_ALERTA) {
+  const supabase = await createClient()
+  const p = { p_estab: estab, p_limite: LIMITE_ALERTA, p_dias: dias }
+  const [ins, fic] = await Promise.all([supabase.rpc("alertas_insumos", p), supabase.rpc("alertas_fichas", p)])
+  return {
+    insumos: (ins.data ?? []) as AlertaInsumo[],
+    fichas: (fic.data ?? []) as AlertaFicha[],
+    erro: !!(ins.error || fic.error),
+  }
+}
+
+// Para os avisos nas listas: mesma regra dos alertas, sobre a variação que o banco já calculou
+export function emAlerta(v: { variacao_pct: number | null; data_referencia: string | null } | undefined): boolean {
+  if (!v || v.variacao_pct == null || !v.data_referencia) return false
+  const corte = new Date(Date.now() - DIAS_ALERTA * 864e5).toISOString().slice(0, 10)
+  return Number(v.variacao_pct) > LIMITE_ALERTA && v.data_referencia >= corte
+}

@@ -7,6 +7,8 @@ import { COR_TODOS, CORES_STATUS } from "@/components/status-preco"
 import { Entrada, Selecao } from "@/components/campos"
 import { Button, buttonVariants } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
+import { AvisoAlertas } from "@/components/aviso-alertas"
+import { emAlerta } from "@/lib/dados"
 import { carregarInsumos, FILTROS, ORDENS, type Ordem, type ParamsInsumos } from "./dados"
 
 export const metadata: Metadata = { title: "Insumos" }
@@ -37,6 +39,8 @@ export default async function PaginaInsumos({ searchParams }: { searchParams: Pr
           <Link href="/insumos/novo" className={buttonVariants({ className: "h-10 px-4" })}>Novo insumo</Link>
         </div>
       </div>
+
+      <AvisoAlertas quantidade={[...variacoes.values()].filter(emAlerta).length} um="insumo subiu" varios="insumos subiram" ancora="insumos" />
 
       <form className="grid gap-2 sm:grid-cols-[1fr_16rem_14rem_auto]" role="search">
         <Entrada name="q" defaultValue={q} placeholder="Buscar por nome ou código" aria-label="Buscar" />
