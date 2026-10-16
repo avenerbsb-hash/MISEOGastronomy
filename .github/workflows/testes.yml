@@ -20,7 +20,7 @@ jobs:
         run: |
           set -o pipefail
           sudo bash testes/rodar.sh 2>&1 | tee saida.txt
-          for m in "TODOS OS TESTES PASSARAM" "CMV DE REFERÊNCIA OK" "CORREÇÕES 0005 OK" "CORREÇÕES 0006 OK" "SEED OK" "CATEGORIAS OK" "RECEBIMENTO OK" "VARIAÇÃO FICHAS OK" "ALERTAS OK" "IMPACTO OK"; do
+          for m in "TODOS OS TESTES PASSARAM" "CMV DE REFERÊNCIA OK" "CORREÇÕES 0005 OK" "CORREÇÕES 0006 OK" "SEED OK" "CATEGORIAS OK" "RECEBIMENTO OK" "VARIAÇÃO FICHAS OK" "ALERTAS OK" "IMPACTO OK" "FORNECEDORES OK"; do
             grep -q "$m" saida.txt || { echo "Faltou: $m"; exit 1; }
           done
 

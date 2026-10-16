@@ -7,7 +7,11 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { BadgeVariacao, Variacao } from "@/components/variacao"
 import { FormAcao, BotaoEnviar } from "@/components/form-acao"
 import { Campo, Entrada, Selecao } from "@/components/campos"
+import { FornecedoresInsumo, type LinhaFornecedor } from "@/components/fornecedores-insumo"
 import { registrarCompra, validarPreco } from "../actions"
+
+// Quantas compras entram no ranking de fornecedores
+const COMPRAS_RANKING = 10
 
 type Pendente = {
   id: string; data_compra: string; quantidade: number; unidade: string; valor_total: number
@@ -20,7 +24,7 @@ export default async function ResumoInsumo({ params }: { params: Promise<{ id: s
   const { id } = await params
   const supabase = await createClient()
 
-  const [{ data: insumo }, variacoes, medir, fornecedores, pendentes, impactadas] = await Promise.all([
+  const [{ data: insumo }, variacoes, medir, fornecedores, pendentes, impactadas, ranking] = await Promise.all([
     supabase.from("insumos").select("nome, dimensao").eq("id", id).single(),
     variacoesDaCasa(s.casa.id),
     supabase.from("alias_insumo").select("descricao_original").eq("insumo_id", id).eq("medir_no_recebimento", true),
@@ -32,6 +36,7 @@ export default async function ResumoInsumo({ params }: { params: Promise<{ id: s
     // impacto % por ficha (0009); sem a migração, cai na lista simples
     supabase.rpc("impacto_insumo_fichas", { p_insumo: id, p_estab: s.casa.id })
       .then((r) => (r.error ? supabase.rpc("fichas_impactadas", { p_insumo: id, p_estab: s.casa.id }) : r)),
+    supabase.rpc("fornecedores_do_insumo", { p_insumo: id, p_estab: s.casa.id, p_compras: COMPRAS_RANKING }),
   ])
   if (!insumo) return null
   const dim = insumo.dimensao as Dimensao
@@ -63,6 +68,8 @@ export default async function ResumoInsumo({ params }: { params: Promise<{ id: s
           ) : (
             <p className="text-sm text-muted-foreground">Ainda não há compra validada deste insumo nesta casa.</p>
           )}
+          {/* sem a migração 0010 o quadro não aparece */}
+          {!ranking.error ? <FornecedoresInsumo linhas={(ranking.data ?? []) as LinhaFornecedor[]} dim={dim} compras={COMPRAS_RANKING} /> : null}
         </CardContent>
       </Card>
 
