@@ -64,6 +64,20 @@ export async function criarSubproduto(_: Estado, dados: FormData): Promise<Estad
   redirect(`/subprodutos/${receita.id}/rascunho`)
 }
 
+// ------------------------------------------------------------------ nome (vale para todas as versões; o histórico fica na auditoria)
+export async function renomearReceita(receitaId: string, _: Estado, dados: FormData): Promise<Estado> {
+  await exigirCustos()
+  const v = texto(120).min(2, "Informe o nome.").safeParse(dados.get("nome"))
+  if (!v.success) return { erro: v.error.issues[0].message }
+  const supabase = await createClient()
+  const { data, error } = await supabase.from("receitas").update({ nome: v.data }).eq("id", receitaId).select("id")
+  if (error) return { erro: traduzirErro(error) }
+  if (!data?.length) return { erro: "Sem permissão para alterar o nome." }
+  revalidarReceita(receitaId)
+  revalidatePath("/subprodutos")
+  return { ok: "Nome atualizado." }
+}
+
 // ------------------------------------------------------------------ rascunho
 export async function criarRascunho(receitaId: string): Promise<Estado> {
   await exigirCustos()

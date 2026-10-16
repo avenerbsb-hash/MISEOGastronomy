@@ -8,7 +8,7 @@ import { Campo, Entrada, Selecao, AreaTexto } from "@/components/campos"
 import { TabelaCustos, type LinhaGerencial } from "@/components/tabela-custos"
 import { agruparPorEtapa } from "@/components/ficha-producao"
 import { FormComponente, type Opcao } from "./form-componente"
-import { adicionarComponente, aprovarVersao, criarRascunho, removerComponente, salvarRascunho } from "../../actions"
+import { adicionarComponente, aprovarVersao, criarRascunho, removerComponente, renomearReceita, salvarRascunho } from "../../actions"
 
 type Componente = {
   id: string; ordem: number; etapa: string | null; quantidade: number; unidade: string; observacao: string | null
@@ -28,15 +28,36 @@ export default async function Rascunho({ params }: { params: Promise<{ id: strin
   const supabase = await createClient()
 
   const [{ data: receita }, { data: versao }] = await Promise.all([
-    supabase.from("receitas").select("dimensao_saida").eq("id", id).single(),
+    supabase.from("receitas").select("nome, dimensao_saida").eq("id", id).single(),
     supabase.from("versoes_receita")
       .select("id, numero, rendimento_quantidade, rendimento_unidade, porcao_descricao, modo_preparo, validade_horas, observacoes")
       .eq("receita_id", id).eq("status", "rascunho").order("numero", { ascending: false }).limit(1).maybeSingle(),
   ])
   const dim = (receita?.dimensao_saida ?? "massa") as Dimensao
+  // O nome vale para todas as versões: muda na hora, sem rascunho nem aprovação
+  const cardNome = (
+    <Card className="lg:col-span-2">
+      <CardHeader>
+        <CardTitle>Nome</CardTitle>
+        <CardDescription>Muda o nome em todas as versões e nas fichas que usam este item. Não precisa de aprovação.</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <FormAcao acao={renomearReceita.bind(null, id)} limparAoSalvar={false}>
+          <div className="flex flex-wrap items-end gap-3">
+            <div className="min-w-64 flex-1">
+              <Campo rotulo="Nome do item"><Entrada name="nome" defaultValue={receita?.nome ?? ""} maxLength={120} required /></Campo>
+            </div>
+            <BotaoEnviar variant="outline">Salvar nome</BotaoEnviar>
+          </div>
+        </FormAcao>
+      </CardContent>
+    </Card>
+  )
 
   if (!versao) {
     return (
+      <div className="grid gap-4">
+      {cardNome}
       <Card>
         <CardHeader>
           <CardTitle>Nenhum rascunho em edição</CardTitle>
@@ -46,6 +67,7 @@ export default async function Rascunho({ params }: { params: Promise<{ id: strin
           <FormAcao acao={criarRascunho.bind(null, id)}><div><BotaoEnviar>Criar rascunho</BotaoEnviar></div></FormAcao>
         </CardContent>
       </Card>
+      </div>
     )
   }
 
@@ -76,6 +98,7 @@ export default async function Rascunho({ params }: { params: Promise<{ id: strin
 
   return (
     <div className="grid gap-4 lg:grid-cols-[1fr_1fr]">
+      {cardNome}
       <Card className="lg:col-span-2">
         <CardHeader>
           <CardTitle>Prévia de custo · rascunho da versão {versao.numero}</CardTitle>
