@@ -1,24 +1,27 @@
 import type { Metadata } from "next"
 import { createClient } from "@/lib/supabase/server"
 import { exigirCustos } from "@/lib/sessao"
-import { PainelCmv, FILTROS_CMV, type ItemDesativado, type LinhaCmv } from "@/components/painel-cmv"
+import { PainelCmv, FILTROS_CMV, type BlocoItem, type ItemDesativado, type LinhaCmv } from "@/components/painel-cmv"
 import { FormAcao, BotaoEnviar } from "@/components/form-acao"
 import { Entrada } from "@/components/campos"
 import { alternarItemCardapio, definirMetaCmv } from "./actions"
 
 export const metadata: Metadata = { title: "CMV" }
 
-export default async function Cmv({ searchParams }: { searchParams: Promise<{ situacao?: string }> }) {
+export default async function Cmv({ searchParams }: { searchParams: Promise<{ situacao?: string; ver?: string }> }) {
   const s = await exigirCustos()
-  const { situacao = "" } = await searchParams
+  const { situacao = "", ver = "" } = await searchParams
   const filtro = FILTROS_CMV.some((f) => f.valor === situacao) ? situacao : ""
   const supabase = await createClient()
-  const [painel, casa, inativos] = await Promise.all([
+  const [painel, casa, inativos, secoes] = await Promise.all([
     supabase.rpc("painel_cmv_casa", { p_estab: s.casa.id }),
     supabase.rpc("cmv_da_casa", { p_estab: s.casa.id }),
     supabase.from("itens_cardapio")
       .select("id, receita_id, nome_exibicao, receitas(nome), cardapios!inner(nome, estabelecimento_id, status)")
       .eq("cardapios.estabelecimento_id", s.casa.id).neq("cardapios.status", "arquivado").eq("ativo", false),
+    // seção e posição de cada item no cardápio, para o painel em blocos
+    supabase.from("itens_cardapio").select("id, secao, ordem, cardapios!inner(nome, estabelecimento_id, status)")
+      .eq("cardapios.estabelecimento_id", s.casa.id).neq("cardapios.status", "arquivado").eq("ativo", true),
   ])
   if (painel.error) return <p className="text-sm text-destructive">Não foi possível carregar o painel de CMV.</p>
   const linhas = (painel.data ?? []) as LinhaCmv[]
@@ -29,6 +32,13 @@ export default async function Cmv({ searchParams }: { searchParams: Promise<{ si
     id: string; receita_id: string; nome_exibicao: string | null; receitas: { nome: string } | null; cardapios: { nome: string }
   }[]).map((i) => ({ item_id: i.id, receita_id: i.receita_id, produto: i.nome_exibicao ?? i.receitas?.nome ?? "—", cardapio: i.cardapios.nome }))
     .sort((a, b) => a.produto.localeCompare(b.produto, "pt-BR"))
+  // blocos na ordem do cardápio impresso: Drinks, depois Bebidas, depois os demais; item sem seção vai para o fim
+  const RANK: Record<string, number> = { Drinks: 0, Bebidas: 1 }
+  const blocos = new Map<string, BlocoItem>()
+  for (const i of (secoes.data ?? []) as unknown as { id: string; secao: string | null; ordem: number; cardapios: { nome: string } }[]) {
+    const rank = i.secao ? RANK[i.cardapios.nome] ?? 2 : 9
+    blocos.set(i.id, { bloco: i.secao ?? `${i.cardapios.nome} · sem seção`, ordem: rank * 100000 + (i.ordem ?? 0) })
+  }
   const botaoItem = (itemId: string, ativar: boolean) => (
     <FormAcao acao={alternarItemCardapio.bind(null, itemId, ativar)} className="gap-1">
       <BotaoEnviar variant={ativar ? "outline" : "ghost"} enviando={ativar ? "Ativando…" : "Desativando…"}
@@ -52,5 +62,5 @@ export default async function Cmv({ searchParams }: { searchParams: Promise<{ si
   ) : null
 
   return <PainelCmv linhas={linhas} filtro={filtro} media={media} meta={Number(meta)} metaDefinida={metaDefinida} casa={s.casa.nome} formMeta={formMeta}
-    desativados={desativados} botaoItem={botaoItem} />
+    desativados={desativados} botaoItem={botaoItem} blocos={blocos} agrupado={ver !== "lista"} />
 }

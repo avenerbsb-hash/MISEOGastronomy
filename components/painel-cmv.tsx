@@ -25,23 +25,108 @@ export const FILTROS_CMV = [
 // Item desativado do cardápio (fora do painel e do CMV médio)
 export type ItemDesativado = { item_id: string; receita_id: string; produto: string; cardapio: string }
 
+// Bloco do item no cardápio (seção como no cardápio impresso); ordem = posição no cardápio
+export type BlocoItem = { bloco: string; ordem: number }
+
 export function PainelCmv({
-  linhas, filtro, media, meta, metaDefinida, casa, formMeta, desativados = [], botaoItem,
+  linhas, filtro, media, meta, metaDefinida, casa, formMeta, desativados = [], botaoItem, blocos, agrupado = false,
 }: {
   linhas: LinhaCmv[]; filtro: string; media: number | null; meta: number; metaDefinida: boolean; casa: string
   formMeta?: React.ReactNode
   desativados?: ItemDesativado[]
   // botão Ativar/Desativar (formulário com a ação do servidor), montado pela página
   botaoItem?: (itemId: string, ativar: boolean) => React.ReactNode
+  // seção de cada item (item_id → bloco); com "agrupado", a tabela sai em blocos como no cardápio
+  blocos?: Map<string, BlocoItem>
+  agrupado?: boolean
 }) {
   const conta = (s: string) => (s === "desativados" ? desativados.length : linhas.filter((l) => !s || l.situacao === s).length)
   const visiveis = linhas.filter((l) => !filtro || l.situacao === filtro)
   const acima = conta("acima_da_meta")
+  const href = (mudar: { situacao?: string; ver?: string }) => {
+    const p = new URLSearchParams()
+    const situacao = mudar.situacao ?? filtro
+    const ver = mudar.ver ?? (agrupado ? "" : "lista")
+    if (situacao) p.set("situacao", situacao)
+    if (ver) p.set("ver", ver)
+    const qs = p.toString()
+    return qs ? `/cmv?${qs}` : "/cmv"
+  }
+  // blocos na ordem do cardápio; dentro de cada bloco, a ordem do painel (CMV mais alto primeiro)
+  const grupos: { nome: string; ordem: number; itens: LinhaCmv[] }[] = []
+  if (agrupado) {
+    const porNome = new Map<string, { nome: string; ordem: number; itens: LinhaCmv[] }>()
+    for (const l of visiveis) {
+      const b = blocos?.get(l.item_id) ?? { bloco: l.cardapio, ordem: Number.MAX_SAFE_INTEGER }
+      const g = porNome.get(b.bloco) ?? { nome: b.bloco, ordem: b.ordem, itens: [] }
+      g.ordem = Math.min(g.ordem, b.ordem)
+      g.itens.push(l)
+      porNome.set(b.bloco, g)
+    }
+    grupos.push(...[...porNome.values()].sort((a, b) => a.ordem - b.ordem || a.nome.localeCompare(b.nome, "pt-BR")))
+  }
+  const linha = (l: LinhaCmv) => {
+    const acimaMeta = l.situacao === "acima_da_meta"
+    return (
+      <tr key={l.item_id} className="align-top">
+        <td className="px-3 py-2">
+          <Link href={`/fichas/${l.receita_id}`} className="font-medium hover:underline">{l.produto}</Link>
+          {agrupado ? null : <div className="text-xs text-muted-foreground">{l.cardapio}</div>}
+        </td>
+        <td className="whitespace-nowrap px-3 py-2 text-right tabular-nums">{l.custo_porcao != null ? reais(l.custo_porcao) : <span className="text-xs text-muted-foreground">falta preço de insumo</span>}</td>
+        <td className="whitespace-nowrap px-3 py-2 text-right tabular-nums">{reais(l.preco_publicado)}</td>
+        <td className="whitespace-nowrap px-3 py-2 text-right">
+          {l.cmv_atual_pct != null ? (
+            <span className="rounded-full px-2 py-0.5 text-xs font-semibold tabular-nums"
+              style={acimaMeta ? { color: CORES_STATUS.subiu.texto, backgroundColor: CORES_STATUS.subiu.fundo } : { color: CORES_STATUS.caiu.texto, backgroundColor: CORES_STATUS.caiu.fundo }}>
+              {percentual(l.cmv_atual_pct)}
+            </span>
+          ) : "—"}
+        </td>
+        <td className="whitespace-nowrap px-3 py-2 text-right tabular-nums">{reais(l.margem_atual)}</td>
+        <td className="whitespace-nowrap px-3 py-2 text-right tabular-nums">
+          {l.preco_meta != null ? (
+            <>
+              <b className={acimaMeta || l.situacao === "sem_preco" ? undefined : "font-normal text-muted-foreground"}>{reais(l.preco_meta)}</b>
+              <div className="text-xs text-muted-foreground">
+                CMV {percentual(l.cmv_preco_meta_pct)}{l.ajuste_meta_pct != null && acimaMeta ? ` · ${percentual(l.ajuste_meta_pct, true)}` : ""}
+              </div>
+            </>
+          ) : "—"}
+        </td>
+        <td className="whitespace-nowrap px-3 py-2 text-right tabular-nums">
+          {l.preco_manter_cmv != null ? (
+            <>
+              {reais(l.preco_manter_cmv)}
+              <div className="text-xs text-muted-foreground">CMV {percentual(l.cmv_ref_pct)}</div>
+            </>
+          ) : "—"}
+        </td>
+        <td className="whitespace-nowrap px-3 py-2 text-right">
+          <div className="flex items-center justify-end gap-1">
+            <Link href={`/fichas/${l.receita_id}/preco`} className="text-sm font-medium underline">
+              {l.preco_publicado == null ? "Definir preço" : "Ajustar preço"}
+            </Link>
+            {botaoItem?.(l.item_id, false)}
+          </div>
+        </td>
+      </tr>
+    )
+  }
+  const ancora = (nome: string) => "bloco-" + nome.normalize("NFD").replace(/[^\w]+/g, "-").toLowerCase()
   return (
     <div className="grid gap-4">
-      <div>
-        <h1 className="text-xl font-semibold">Painel de CMV</h1>
-        <p className="text-sm text-muted-foreground">Cardápio de {casa}, do CMV mais alto para o mais baixo, com o preço sugerido para a meta</p>
+      <div className="flex flex-wrap items-end justify-between gap-2">
+        <div>
+          <h1 className="text-xl font-semibold">Painel de CMV</h1>
+          <p className="text-sm text-muted-foreground">
+            Cardápio de {casa}, {agrupado ? "em blocos como no cardápio" : "do CMV mais alto para o mais baixo"}, com o preço sugerido para a meta
+          </p>
+        </div>
+        <nav aria-label="Organização" className="flex gap-1.5 text-sm">
+          <Link href={href({ ver: "" })} className={cn("rounded-full border px-3 py-1.5", agrupado && "border-foreground bg-foreground text-background")}>Por seção do cardápio</Link>
+          <Link href={href({ ver: "lista" })} className={cn("rounded-full border px-3 py-1.5", !agrupado && "border-foreground bg-foreground text-background")}>Lista por CMV</Link>
+        </nav>
       </div>
 
       <div className="grid gap-3 sm:grid-cols-3">
@@ -54,7 +139,7 @@ export function PainelCmv({
           <div className="text-sm text-muted-foreground">Meta de CMV da casa{metaDefinida ? "" : " (padrão)"}</div>
           {formMeta}
         </div>
-        <Link href="/cmv?situacao=acima_da_meta" className="rounded-xl border px-4 py-3 hover:bg-muted/50">
+        <Link href={href({ situacao: "acima_da_meta" })} className="rounded-xl border px-4 py-3 hover:bg-muted/50">
           <div className={cn("text-2xl font-semibold tabular-nums", acima > 0 && "text-[#DC2626]")}>{acima}</div>
           <div className="text-sm text-muted-foreground">{acima === 1 ? "item acima da meta" : "itens acima da meta"}</div>
         </Link>
@@ -67,7 +152,7 @@ export function PainelCmv({
             : f.valor === "sem_preco" ? CORES_STATUS.sem_preco : f.valor === "sem_custo" ? CORES_STATUS.sem_comparacao
             : f.valor === "desativados" ? CORES_STATUS.estavel : null
           return (
-            <Link key={f.valor} href={f.valor ? `/cmv?situacao=${f.valor}` : "/cmv"} aria-current={ativo ? "page" : undefined}
+            <Link key={f.valor} href={href({ situacao: f.valor })} aria-current={ativo ? "page" : undefined}
               className={cn("rounded-full border px-3 py-1.5 text-sm", ativo && "border-transparent font-semibold")}
               style={ativo ? (cor ? { color: cor.texto, backgroundColor: cor.fundo } : { color: COR_TODOS.texto, backgroundColor: COR_TODOS.fundo }) : undefined}>
               {f.rotulo} <span className="tabular-nums opacity-70">{conta(f.valor)}</span>
@@ -97,6 +182,16 @@ export function PainelCmv({
           {linhas.length ? "Nenhum item nesta situação." : "Nenhum item no cardápio desta casa. Defina o preço de venda nas fichas para elas entrarem aqui."}
         </p>
       ) : (
+        <>
+        {agrupado && grupos.length > 1 ? (
+          <nav aria-label="Seções do cardápio" className="flex flex-wrap gap-1.5 text-xs">
+            {grupos.map((g) => (
+              <a key={g.nome} href={`#${ancora(g.nome)}`} className="rounded-full border px-2.5 py-1 text-muted-foreground hover:bg-muted hover:text-foreground">
+                {g.nome} <span className="tabular-nums opacity-70">{g.itens.length}</span>
+              </a>
+            ))}
+          </nav>
+        ) : null}
         <div className="overflow-x-auto rounded-xl border">
           <table className="w-full min-w-[56rem] text-sm">
             <thead className="bg-muted/50 text-left text-xs text-muted-foreground">
@@ -111,58 +206,25 @@ export function PainelCmv({
                 <th className="px-3 py-2" />
               </tr>
             </thead>
-            <tbody className="divide-y">
-              {visiveis.map((l) => {
-                const acimaMeta = l.situacao === "acima_da_meta"
-                return (
-                  <tr key={l.item_id} className="align-top">
-                    <td className="px-3 py-2">
-                      <Link href={`/fichas/${l.receita_id}`} className="font-medium hover:underline">{l.produto}</Link>
-                      <div className="text-xs text-muted-foreground">{l.cardapio}</div>
-                    </td>
-                    <td className="whitespace-nowrap px-3 py-2 text-right tabular-nums">{l.custo_porcao != null ? reais(l.custo_porcao) : <span className="text-xs text-muted-foreground">falta preço de insumo</span>}</td>
-                    <td className="whitespace-nowrap px-3 py-2 text-right tabular-nums">{reais(l.preco_publicado)}</td>
-                    <td className="whitespace-nowrap px-3 py-2 text-right">
-                      {l.cmv_atual_pct != null ? (
-                        <span className="rounded-full px-2 py-0.5 text-xs font-semibold tabular-nums"
-                          style={acimaMeta ? { color: CORES_STATUS.subiu.texto, backgroundColor: CORES_STATUS.subiu.fundo } : { color: CORES_STATUS.caiu.texto, backgroundColor: CORES_STATUS.caiu.fundo }}>
-                          {percentual(l.cmv_atual_pct)}
-                        </span>
-                      ) : "—"}
-                    </td>
-                    <td className="whitespace-nowrap px-3 py-2 text-right tabular-nums">{reais(l.margem_atual)}</td>
-                    <td className="whitespace-nowrap px-3 py-2 text-right tabular-nums">
-                      {l.preco_meta != null ? (
-                        <>
-                          <b className={acimaMeta || l.situacao === "sem_preco" ? undefined : "font-normal text-muted-foreground"}>{reais(l.preco_meta)}</b>
-                          <div className="text-xs text-muted-foreground">
-                            CMV {percentual(l.cmv_preco_meta_pct)}{l.ajuste_meta_pct != null && acimaMeta ? ` · ${percentual(l.ajuste_meta_pct, true)}` : ""}
-                          </div>
-                        </>
-                      ) : "—"}
-                    </td>
-                    <td className="whitespace-nowrap px-3 py-2 text-right tabular-nums">
-                      {l.preco_manter_cmv != null ? (
-                        <>
-                          {reais(l.preco_manter_cmv)}
-                          <div className="text-xs text-muted-foreground">CMV {percentual(l.cmv_ref_pct)}</div>
-                        </>
-                      ) : "—"}
-                    </td>
-                    <td className="whitespace-nowrap px-3 py-2 text-right">
-                      <div className="flex items-center justify-end gap-1">
-                        <Link href={`/fichas/${l.receita_id}/preco`} className="text-sm font-medium underline">
-                          {l.preco_publicado == null ? "Definir preço" : "Ajustar preço"}
-                        </Link>
-                        {botaoItem?.(l.item_id, false)}
-                      </div>
-                    </td>
-                  </tr>
-                )
-              })}
-            </tbody>
+            {agrupado ? grupos.map((g) => (
+              <tbody key={g.nome} className="divide-y border-t">
+                <tr id={ancora(g.nome)} className="scroll-mt-28 bg-muted/30">
+                  <th colSpan={8} className="px-3 py-2 text-left text-sm font-semibold">
+                    {g.nome}
+                    <span className="ml-2 text-xs font-normal text-muted-foreground">
+                      {g.itens.length} {g.itens.length === 1 ? "item" : "itens"}
+                      {g.itens.some((l) => l.situacao === "acima_da_meta") ? ` · ${g.itens.filter((l) => l.situacao === "acima_da_meta").length} acima da meta` : ""}
+                    </span>
+                  </th>
+                </tr>
+                {g.itens.map(linha)}
+              </tbody>
+            )) : (
+              <tbody className="divide-y">{visiveis.map(linha)}</tbody>
+            )}
           </table>
         </div>
+        </>
       )}
       <p className="text-xs text-muted-foreground">
         Preço para a meta = custo ÷ meta da casa, arredondado pela regra da casa. &quot;Manter CMV do item&quot; usa o CMV que o item tinha
