@@ -33,7 +33,7 @@ export function ConferenciaAberta({ c, acao }: { c: Conferencia; acao: Acao }) {
         {" "}Acima do limite de {pctPreciso(c.limite_pct, false)}: o custo anterior continua valendo até a conferência.
       </p>
       <FormAcao acao={acao} className="gap-2">
-        <Entrada name="justificativa" required minLength={3} maxLength={500} placeholder="Justificativa (obrigatória): ex. reajuste confirmado com o fornecedor" aria-label="Justificativa" />
+        <Entrada name="justificativa" maxLength={500} placeholder="Justificativa (opcional): ex. reajuste confirmado com o fornecedor" aria-label="Justificativa (opcional)" />
         <div className="flex flex-wrap gap-2">
           <BotaoEnviar name="acao" value="aprovar">Aprovar</BotaoEnviar>
           <BotaoEnviar name="acao" value="rejeitar" variant="outline">Rejeitar</BotaoEnviar>
@@ -75,7 +75,7 @@ export function ConferenciasResolvidas({ lista }: { lista: Conferencia[] }) {
             <span className="text-xs text-muted-foreground">compra de {dataCurta(c.data_compra)} · alta de {pctPreciso(c.variacao_pct)}</span>
           </div>
           <div className="text-xs text-muted-foreground">
-            “{c.justificativa}” — {c.responsavel ?? "usuário"}, {dataHora(c.resolvido_em)}
+            {c.justificativa ? `“${c.justificativa}” — ` : ""}{c.responsavel ?? "usuário"}, {dataHora(c.resolvido_em)}
           </div>
         </li>
       ))}

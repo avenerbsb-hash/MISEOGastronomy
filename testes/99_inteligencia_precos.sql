@@ -52,17 +52,13 @@ select pg_temp.ok('conferência aberta com variação de 37,5% e limite 15%',
   (select status = 'aberta' and round(variacao_pct, 4) = 37.5 and limite_pct = 15 from conferencias_preco where historico_preco_id = (select id from _c1)));
 select pg_temp.ok('enquanto pendente, indicador A = sem comparação e custo oficial R$ 40',
   (select status_ultima = 'sem_comparacao' and custo_oficial = 40 from _ind_e1 where insumo_id = '00000000-0000-0000-0000-000000000a01'));
-do $$ begin
-  perform resolver_conferencia((select id from conferencias_preco where historico_preco_id = (select id from _c1)), 'aprovar', '  ');
-  raise exception 'FALHOU: aprovou sem justificativa';
-exception when check_violation then raise notice 'OK  justificativa obrigatória';
-end $$;
-select resolver_conferencia((select id from conferencias_preco where historico_preco_id = (select id from _c1)), 'aprovar', 'reajuste do fornecedor confirmado');
+-- justificativa é opcional (0014): em branco aprova e grava nula
+select resolver_conferencia((select id from conferencias_preco where historico_preco_id = (select id from _c1)), 'aprovar', '  ');
 select pg_temp.ok('aprovada: A = +37,5% (subiu) e custo oficial R$ 55',
   (select status_ultima = 'subiu' and variacao_ultima_pct = 37.5 and custo_oficial = 55 from _ind_e1 where insumo_id = '00000000-0000-0000-0000-000000000a01'),
   (select variacao_ultima_pct::text from _ind_e1 where insumo_id = '00000000-0000-0000-0000-000000000a01'));
-select pg_temp.ok('conferência registra responsável e justificativa',
-  (select status = 'aprovada' and resolvido_por = '00000000-0000-0000-0000-0000000000a1' and justificativa like 'reajuste%'
+select pg_temp.ok('conferência sem justificativa registra responsável e data',
+  (select status = 'aprovada' and resolvido_por = '00000000-0000-0000-0000-0000000000a1' and justificativa is null and resolvido_em is not null
      from conferencias_preco where historico_preco_id = (select id from _c1)));
 
 \echo '== 2. Tendência mensal: média R$ 40 → R$ 43,75 = +9,375%'

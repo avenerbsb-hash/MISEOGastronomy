@@ -86,7 +86,7 @@ export default async function Pendencias() {
           <CardTitle>Compras aguardando validação ({listaPrecos.length})</CardTitle>
           <CardDescription>
             O custo do insumo só muda depois de validado.
-            {conferencias.size ? ` ${conferencias.size} com alta acima do limite: confira com justificativa.` : ""}
+            {conferencias.size ? ` ${conferencias.size} com alta acima do limite: confira antes de aprovar.` : ""}
           </CardDescription>
         </CardHeader>
         <CardContent className="grid gap-3">

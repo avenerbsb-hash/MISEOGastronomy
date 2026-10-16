@@ -31,7 +31,7 @@ export async function registrarRecebimento(itemId: string, _: Estado, dados: For
 // ------------------------------------------------------------------ conferência de compras (0012)
 const esquemaConferencia = z.object({
   acao: z.enum(["aprovar", "corrigir", "rejeitar"], { message: "Escolha aprovar, corrigir ou rejeitar." }),
-  justificativa: z.string().trim().min(3, "Escreva a justificativa da conferência.").max(500),
+  justificativa: z.string().trim().max(500, "A justificativa pode ter até 500 caracteres.").nullish(),
 })
 const esquemaCorrecao = z.object({
   quantidade: decimal.pipe(z.number().positive("Informe a quantidade corrigida.")),
@@ -51,7 +51,7 @@ export async function resolverConferencia(conferenciaId: string, _: Estado, dado
   }
   const supabase = await createClient()
   const { error } = await supabase.rpc("resolver_conferencia", {
-    p_conferencia: conferenciaId, p_acao: v.data.acao, p_justificativa: v.data.justificativa,
+    p_conferencia: conferenciaId, p_acao: v.data.acao, p_justificativa: v.data.justificativa || null,
     p_quantidade: correcao?.quantidade ?? null, p_unidade: correcao?.unidade ?? null, p_valor: correcao?.valor ?? null,
   })
   if (error) return { erro: traduzirErro(error) }
