@@ -1,7 +1,8 @@
 import Link from "next/link"
-import { percentual, reais } from "@/lib/formato"
+import { dataHora, percentual, reais } from "@/lib/formato"
 import { CORES_STATUS, COR_TODOS } from "@/components/status-preco"
 import { cn } from "@/lib/utils"
+import { BotaoImprimir } from "@/components/botao-imprimir"
 
 // Painel de CMV da casa: só exibe o que painel_cmv_casa / cmv_da_casa calcularam no banco
 export type LinhaCmv = {
@@ -85,14 +86,14 @@ export function PainelCmv({
   const linha = (l: LinhaCmv) => {
     const acimaMeta = l.situacao === "acima_da_meta"
     return (
-      <tr key={l.item_id} className="align-top">
-        <td className="px-3 py-2">
+      <tr key={l.item_id} className="align-top break-inside-avoid">
+        <td className="px-3 py-2 print:px-1.5 print:py-1">
           <Link href={`/fichas/${l.receita_id}`} className="font-medium hover:underline">{l.produto}</Link>
           {agrupado ? null : <div className="text-xs text-muted-foreground">{l.cardapio}</div>}
         </td>
-        <td className="whitespace-nowrap px-3 py-2 text-right tabular-nums">{l.custo_porcao != null ? reais(l.custo_porcao) : <span className="text-xs text-muted-foreground">falta preço de insumo</span>}</td>
-        <td className="whitespace-nowrap px-3 py-2 text-right tabular-nums">{reais(l.preco_publicado)}</td>
-        <td className="whitespace-nowrap px-3 py-2 text-right">
+        <td className="whitespace-nowrap px-3 py-2 text-right print:px-1.5 print:py-1 tabular-nums">{l.custo_porcao != null ? reais(l.custo_porcao) : <span className="text-xs text-muted-foreground">falta preço de insumo</span>}</td>
+        <td className="whitespace-nowrap px-3 py-2 text-right print:px-1.5 print:py-1 tabular-nums">{reais(l.preco_publicado)}</td>
+        <td className="whitespace-nowrap px-3 py-2 text-right print:px-1.5 print:py-1">
           {l.cmv_atual_pct != null ? (
             <span className="rounded-full px-2 py-0.5 text-xs font-semibold tabular-nums"
               style={acimaMeta ? { color: CORES_STATUS.subiu.texto, backgroundColor: CORES_STATUS.subiu.fundo } : { color: CORES_STATUS.caiu.texto, backgroundColor: CORES_STATUS.caiu.fundo }}>
@@ -100,10 +101,10 @@ export function PainelCmv({
             </span>
           ) : "—"}
         </td>
-        <td className="whitespace-nowrap px-3 py-2 text-right tabular-nums">
+        <td className="whitespace-nowrap px-3 py-2 text-right print:px-1.5 print:py-1 tabular-nums">
           {resultados ? <Resultado r={resultados.get(l.item_id)} /> : reais(l.margem_atual)}
         </td>
-        <td className="whitespace-nowrap px-3 py-2 text-right tabular-nums">
+        <td className="whitespace-nowrap px-3 py-2 text-right print:px-1.5 print:py-1 tabular-nums">
           {l.preco_meta != null ? (
             <>
               <b className={acimaMeta || l.situacao === "sem_preco" ? undefined : "font-normal text-muted-foreground"}>{reais(l.preco_meta)}</b>
@@ -113,7 +114,7 @@ export function PainelCmv({
             </>
           ) : "—"}
         </td>
-        <td className="whitespace-nowrap px-3 py-2 text-right tabular-nums">
+        <td className="whitespace-nowrap px-3 py-2 text-right print:px-1.5 print:py-1 tabular-nums">
           {l.preco_manter_cmv != null ? (
             <>
               {reais(l.preco_manter_cmv)}
@@ -121,7 +122,7 @@ export function PainelCmv({
             </>
           ) : "—"}
         </td>
-        <td className="whitespace-nowrap px-3 py-2 text-right">
+        <td className="whitespace-nowrap px-3 py-2 text-right print:px-1.5 print:py-1 print:hidden">
           <div className="flex items-center justify-end gap-1">
             <Link href={`/fichas/${l.receita_id}/preco`} className="text-sm font-medium underline">
               {l.preco_publicado == null ? "Definir preço" : "Ajustar preço"}
@@ -143,13 +144,21 @@ export function PainelCmv({
             Cardápio de {casa}, {agrupado ? "em blocos como no cardápio" : "do CMV mais alto para o mais baixo"}, com o preço sugerido para a meta
           </p>
         </div>
+        <div className="flex flex-wrap items-center gap-1.5 print:hidden">
         <nav aria-label="Organização" className="flex gap-1.5 text-sm">
           <Link href={href({ ver: "" })} className={cn("rounded-full border px-3 py-1.5", agrupado && "border-foreground bg-foreground text-background")}>Por seção do cardápio</Link>
           <Link href={href({ ver: "lista" })} className={cn("rounded-full border px-3 py-1.5", !agrupado && "border-foreground bg-foreground text-background")}>Lista por CMV</Link>
         </nav>
+        <BotaoImprimir>Emitir PDF</BotaoImprimir>
+        </div>
+        <p className="hidden w-full text-xs text-muted-foreground print:block">
+          MISEO · {casa} · gerado em {dataHora(new Date().toISOString())}
+          {" · "}{FILTROS_CMV.find((f) => f.valor === filtro)?.rotulo.replace("▲ ", "") ?? "Todos"}
+          {agrupado && bloco ? ` · seção ${bloco}` : agrupado ? " · todo o cardápio" : ""}
+        </p>
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-3">
+      <div className="grid gap-3 sm:grid-cols-3 print:grid-cols-3">
         <div className="rounded-xl border px-4 py-3">
           <div className={cn("text-2xl font-semibold tabular-nums", media != null && media > meta && "text-[#DC2626]")}>{percentual(media)}</div>
           <div className="text-sm text-muted-foreground">CMV médio do cardápio</div>
@@ -167,7 +176,7 @@ export function PainelCmv({
 
       {estrutura}
 
-      <nav aria-label="Filtrar por situação" className="flex flex-wrap gap-1.5">
+      <nav aria-label="Filtrar por situação" className="flex flex-wrap gap-1.5 print:hidden">
         {FILTROS_CMV.map((f) => {
           const ativo = filtro === f.valor
           const cor = f.valor === "acima_da_meta" ? CORES_STATUS.subiu : f.valor === "dentro_da_meta" ? CORES_STATUS.caiu
@@ -206,7 +215,7 @@ export function PainelCmv({
       ) : (
         <>
         {agrupado && grupos.length > 0 ? (
-          <nav aria-label="Seções do cardápio" className="flex flex-wrap gap-1.5 text-xs">
+          <nav aria-label="Seções do cardápio" className="flex flex-wrap gap-1.5 text-xs print:hidden">
             <Link href={href({ bloco: "" })} aria-current={!bloco ? "page" : undefined}
               className={cn("rounded-full border px-2.5 py-1 font-medium", !bloco ? "border-foreground bg-foreground text-background" : "hover:bg-muted")}>
               Todo o cardápio <span className="tabular-nums opacity-70">{visiveis.length}</span>
@@ -222,24 +231,24 @@ export function PainelCmv({
         {agrupado && bloco && !grupos.some((g) => g.nome === bloco) ? (
           <p className="rounded-xl border p-6 text-center text-sm text-muted-foreground">Nenhum item de “{bloco}” nesta situação.</p>
         ) : null}
-        <div className="overflow-x-auto rounded-xl border">
-          <table className="w-full min-w-[56rem] text-sm">
+        <div className="overflow-x-auto rounded-xl border print:overflow-visible">
+          <table className="w-full min-w-[56rem] text-sm print:min-w-0 print:text-[10px] print:[&_.rounded-full]:text-[9.5px] print:[&_.text-xs]:text-[8.5px]">
             <thead className="bg-muted/50 text-left text-xs text-muted-foreground">
               <tr>
-                <th className="px-3 py-2">Item</th>
-                <th className="px-3 py-2 text-right">Custo</th>
-                <th className="px-3 py-2 text-right">Preço</th>
-                <th className="px-3 py-2 text-right">CMV</th>
-                <th className="px-3 py-2 text-right" title="Preço − CMV − impostos e taxas − despesas fixas e financeira">{resultados ? "Resultado na ponta" : "Margem"}</th>
-                <th className="px-3 py-2 text-right">Preço para a meta</th>
-                <th className="px-3 py-2 text-right">Manter CMV do item</th>
-                <th className="px-3 py-2" />
+                <th className="px-3 py-2 print:px-1.5 print:py-1">Item</th>
+                <th className="px-3 py-2 text-right print:px-1.5 print:py-1">Custo</th>
+                <th className="px-3 py-2 text-right print:px-1.5 print:py-1">Preço</th>
+                <th className="px-3 py-2 text-right print:px-1.5 print:py-1">CMV</th>
+                <th className="px-3 py-2 text-right print:px-1.5 print:py-1" title="Preço − CMV − impostos e taxas − despesas fixas e financeira">{resultados ? "Resultado na ponta" : "Margem"}</th>
+                <th className="px-3 py-2 text-right print:px-1.5 print:py-1">Preço para a meta</th>
+                <th className="px-3 py-2 text-right print:px-1.5 print:py-1">Manter CMV do item</th>
+                <th className="px-3 py-2 print:hidden" />
               </tr>
             </thead>
             {agrupado ? (bloco ? grupos.filter((g) => g.nome === bloco) : grupos).map((g) => (
               <tbody key={g.nome} className="divide-y border-t">
                 <tr id={ancora(g.nome)} className="scroll-mt-28 bg-muted/30">
-                  <th colSpan={8} className="px-3 py-2 text-left text-sm font-semibold">
+                  <th colSpan={8} className="px-3 py-2 text-left text-sm font-semibold print:px-1.5 print:py-1 print:text-[11px]">
                     {g.nome}
                     <span className="ml-2 text-xs font-normal text-muted-foreground">
                       {g.itens.length} {g.itens.length === 1 ? "item" : "itens"}

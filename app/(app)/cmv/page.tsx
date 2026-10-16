@@ -75,7 +75,7 @@ export default async function Cmv({ searchParams }: { searchParams: Promise<{ si
   )
 
   const formMeta = s.admin ? (
-    <details className="mt-1 text-sm">
+    <details className="mt-1 text-sm print:hidden">
       <summary className="cursor-pointer text-xs text-muted-foreground hover:underline">Alterar meta</summary>
       <FormAcao acao={definirMetaCmv} limparAoSalvar={false} className="mt-2 gap-2">
         <div className="flex items-center gap-2">
