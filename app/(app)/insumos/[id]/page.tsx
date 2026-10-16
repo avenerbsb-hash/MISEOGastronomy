@@ -4,7 +4,7 @@ import { exigirCustos } from "@/lib/sessao"
 import { variacoesDaCasa } from "@/lib/dados"
 import { custoPorUnidade, dataCurta, hojeSP, numero, reais, rotuloUnidade, UNIDADES_POR_DIMENSAO, type Dimensao } from "@/lib/formato"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
-import { Variacao } from "@/components/variacao"
+import { BadgeVariacao, Variacao } from "@/components/variacao"
 import { FormAcao, BotaoEnviar } from "@/components/form-acao"
 import { Campo, Entrada, Selecao } from "@/components/campos"
 import { registrarCompra, validarPreco } from "../actions"
@@ -29,14 +29,20 @@ export default async function ResumoInsumo({ params }: { params: Promise<{ id: s
       .select("id, data_compra, quantidade, unidade, valor_total, custo_unitario_base, documento_ref, observacao, fornecedores(nome)")
       .eq("insumo_id", id).eq("estabelecimento_id", s.casa.id).eq("status", "pendente")
       .order("data_compra", { ascending: false }),
-    supabase.rpc("fichas_impactadas", { p_insumo: id, p_estab: s.casa.id }),
+    // impacto % por ficha (0009); sem a migração, cai na lista simples
+    supabase.rpc("impacto_insumo_fichas", { p_insumo: id, p_estab: s.casa.id })
+      .then((r) => (r.error ? supabase.rpc("fichas_impactadas", { p_insumo: id, p_estab: s.casa.id }) : r)),
   ])
   if (!insumo) return null
   const dim = insumo.dimensao as Dimensao
   const v = variacoes.get(id)
   const medirNoRecebimento = (medir.data ?? []).length > 0
   const unidades = UNIDADES_POR_DIMENSAO[dim]
-  const fichas = (impactadas.data ?? []) as { receita_id: string; receita: string; tipo: "subproduto" | "final" }[]
+  const fichas = (impactadas.data ?? []) as {
+    receita_id: string; receita: string; tipo: "subproduto" | "final"
+    custo_atual?: number | null; impacto_pct?: number | null; sinal?: string
+  }[]
+  const comImpacto = fichas.some((f) => f.sinal !== undefined)
 
   return (
     <div className="grid gap-4 lg:grid-cols-[1fr_1fr]">
@@ -139,7 +145,10 @@ export default async function ResumoInsumo({ params }: { params: Promise<{ id: s
       <Card>
         <CardHeader>
           <CardTitle>Fichas impactadas</CardTitle>
-          <CardDescription>Receitas aprovadas que usam este insumo, direta ou indiretamente</CardDescription>
+          <CardDescription>
+            Receitas aprovadas que usam este insumo, direta ou indiretamente
+            {comImpacto && v?.custo_anterior != null ? <>, e quanto a última mudança de preço dele ({v.variacao_pct != null ? <BadgeVariacao sinal={v.sinal} pct={v.variacao_pct} /> : null}) mexeu no custo de cada uma</> : null}
+          </CardDescription>
         </CardHeader>
         <CardContent>
           {impactadas.error ? (
@@ -149,13 +158,19 @@ export default async function ResumoInsumo({ params }: { params: Promise<{ id: s
           ) : (
             <ul className="divide-y">
               {fichas.map((f) => (
-                <li key={f.receita_id} className="flex justify-between gap-2 py-2 text-sm">
-                  {f.tipo === "subproduto" ? (
-                    <Link href={`/subprodutos/${f.receita_id}`} className="hover:underline">{f.receita}</Link>
-                  ) : (
-                    <span>{f.receita}</span>
-                  )}
-                  <span className="text-muted-foreground">{f.tipo === "subproduto" ? "Subproduto" : "Ficha final"}</span>
+                <li key={f.receita_id} className="flex items-center justify-between gap-3 py-2 text-sm">
+                  <div className="min-w-0">
+                    <Link href={f.tipo === "subproduto" ? `/subprodutos/${f.receita_id}` : `/fichas/${f.receita_id}`} className="hover:underline">{f.receita}</Link>
+                    <div className="text-xs text-muted-foreground">
+                      {f.tipo === "subproduto" ? "Subproduto" : "Ficha final"}
+                      {f.tipo === "final" && f.custo_atual != null ? ` · custo da porção ${reais(f.custo_atual)}` : ""}
+                    </div>
+                  </div>
+                  {comImpacto ? (
+                    f.impacto_pct != null
+                      ? <span className="shrink-0" title="Impacto da última mudança de preço deste insumo no custo da receita"><BadgeVariacao sinal={f.sinal} pct={f.impacto_pct} /></span>
+                      : <span className="shrink-0 text-xs text-muted-foreground">sem comparação</span>
+                  ) : null}
                 </li>
               ))}
             </ul>
