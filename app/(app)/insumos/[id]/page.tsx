@@ -100,7 +100,7 @@ export default async function ResumoInsumo({ params, searchParams }: { params: P
       <Card>
         <CardHeader>
           <CardTitle>Registrar compra</CardTitle>
-          <CardDescription>Entra como pendente; o custo só muda depois de validado.</CardDescription>
+          <CardDescription>O custo é atualizado na hora. Alta acima do limite da casa vai para conferência em Compras.</CardDescription>
         </CardHeader>
         <CardContent>
           {medirNoRecebimento ? (

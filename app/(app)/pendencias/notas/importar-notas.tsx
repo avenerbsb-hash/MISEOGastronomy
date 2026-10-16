@@ -299,7 +299,7 @@ export function ImportarNotas({ insumos: insumosIniciais, categorias, casa, tota
         </ul>
         <div className="flex flex-wrap gap-2">
           <Link href="/insumos?ordem=alta" className={buttonVariants({ className: "h-10 px-4" })}>Ver variação dos insumos</Link>
-          <Link href="/pendencias" className={buttonVariants({ variant: "outline", className: "h-10 px-4" })}>Ir para Pendências</Link>
+          <Link href="/pendencias" className={buttonVariants({ variant: "outline", className: "h-10 px-4" })}>Ir para Compras</Link>
           <Button variant="ghost" className="h-10 px-4" onClick={() => { setResultado(null); setArquivos([]); setErro(null) }}>Importar outras notas</Button>
         </div>
       </div>

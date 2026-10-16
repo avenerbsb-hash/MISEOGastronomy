@@ -141,7 +141,8 @@ export async function criarInsumoRapido(_: EstadoNovoInsumo, dados: FormData): P
   return { erro: traduzirErro(ultimoErro) }
 }
 
-// ------------------------------------------------------------------ registrar compra (pendente)
+// ------------------------------------------------------------------ registrar compra (lançada à mão)
+// Entra validada e atualiza o custo; alta acima do limite da casa vira conferência (trigger da 0012).
 const esquemaCompra = z.object({
   data_compra: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Informe a data da compra."),
   fornecedor_id: z.string().uuid().optional(),
@@ -175,7 +176,7 @@ export async function registrarCompra(insumoId: string, _: Estado, dados: FormDa
     return { erro: `Este insumo é medido em ${permitidas.join(" ou ")}. Informe a quantidade pesada ou contada nessa unidade.` }
   }
 
-  const { error } = await supabase.from("historico_precos").insert({
+  const { data: gravado, error } = await supabase.from("historico_precos").insert({
     insumo_id: insumoId,
     estabelecimento_id: s.casa.id,
     fornecedor_id: v.data.fornecedor_id ?? null,
@@ -184,14 +185,26 @@ export async function registrarCompra(insumoId: string, _: Estado, dados: FormDa
     unidade: v.data.unidade,
     valor_total: v.data.valor_total,
     fonte: "manual",
-    status: "pendente",
+    status: "validado",
     documento_ref: v.data.documento_ref ?? null,
     observacao: v.data.observacao ?? null,
-  })
+  }).select("status").single()
   if (error) return { erro: traduzirErro(error) }
   revalidatePath(`/insumos/${insumoId}`)
+  revalidatePath("/insumos")
   revalidatePath("/pendencias")
-  return { ok: "Compra registrada como pendente. Um gestor precisa validar para o custo mudar." }
+  revalidatePath("/fichas", "layout")
+  revalidatePath("/cmv")
+  return gravado?.status === "pendente"
+    ? { ok: "Compra registrada. O preço subiu acima do limite da casa: confira em Compras → conferência. Até lá vale o custo anterior." }
+    : { ok: "Compra registrada. O custo do insumo foi atualizado." }
+}
+
+// Compra avulsa (sem nota), escolhendo o insumo no próprio formulário
+export async function registrarCompraAvulsa(estado: Estado, dados: FormData): Promise<Estado> {
+  const insumoId = String(dados.get("insumo_id") ?? "")
+  if (!/^[0-9a-f-]{36}$/.test(insumoId)) return { erro: "Escolha o insumo." }
+  return registrarCompra(insumoId, estado, dados)
 }
 
 // ------------------------------------------------------------------ validar / rejeitar

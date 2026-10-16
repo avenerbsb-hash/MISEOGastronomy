@@ -272,7 +272,7 @@ export async function importarNotas(
         falhas.length === 0,
         falhas.length
           ? `Importada, mas sem preço para: ${falhas.join("; ")}`
-          : `${atualizados} preço(s) lançado(s) em ${casasDaNota.length} casa(s), ${pesagem} aguardando pesagem, ${ignorados} ignorado(s). Altas acima do limite ficam em Pendências para conferência.`,
+          : `${atualizados} preço(s) lançado(s) em ${casasDaNota.length} casa(s), ${pesagem} aguardando pesagem, ${ignorados} ignorado(s). Altas acima do limite ficam em Compras para conferência.`,
         fornecedor.nome,
       )
     } catch (e) {

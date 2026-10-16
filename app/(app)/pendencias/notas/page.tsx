@@ -19,7 +19,7 @@ export default async function PaginaImportarNotas() {
   return (
     <div className="grid gap-4">
       <div>
-        <div className="mb-2 text-sm"><Link href="/pendencias" className="text-muted-foreground hover:underline">← Pendências</Link></div>
+        <div className="mb-2 text-sm"><Link href="/pendencias" className="text-muted-foreground hover:underline">← Compras</Link></div>
         <h1 className="text-xl font-semibold">Importar notas fiscais (XML)</h1>
         <p className="text-sm text-muted-foreground">
           O sistema lê fornecedor, data e itens. Itens já conhecidos entram sozinhos; os novos você define uma vez e o

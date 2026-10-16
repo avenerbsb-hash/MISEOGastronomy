@@ -7,12 +7,14 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { FormAcao, BotaoEnviar } from "@/components/form-acao"
 import { Entrada, Selecao } from "@/components/campos"
 import { buttonVariants } from "@/components/ui/button"
-import { validarPreco } from "../insumos/actions"
+import { registrarCompraAvulsa, validarPreco } from "../insumos/actions"
+import { CompraAvulsa } from "@/components/compra-avulsa"
+import { hojeSP } from "@/lib/formato"
 import { registrarRecebimento, removerLimite, resolverConferencia, salvarLimite } from "./actions"
 import { categorias, nomesCategorias } from "@/lib/dados"
 import { ConferenciaAberta, ConferenciasResolvidas, LimitesConferencia, type Conferencia, type Limite } from "@/components/conferencias"
 
-export const metadata: Metadata = { title: "Pendências" }
+export const metadata: Metadata = { title: "Compras" }
 
 type Preco = {
   id: string; data_compra: string; quantidade: number; unidade: string; valor_total: number
@@ -30,7 +32,7 @@ type Nota = {
 export default async function Pendencias() {
   const s = await exigirCustos()
   const supabase = await createClient()
-  const [precos, notas, abertas, resolvidas, limites, cats] = await Promise.all([
+  const [precos, notas, abertas, resolvidas, limites, cats, listaInsumos, listaFornecedores] = await Promise.all([
     supabase.from("historico_precos")
       .select("id, data_compra, quantidade, unidade, valor_total, custo_unitario_base, observacao, insumos(id, nome, dimensao), fornecedores(nome)")
       .eq("estabelecimento_id", s.casa.id).eq("status", "pendente")
@@ -44,6 +46,8 @@ export default async function Pendencias() {
     supabase.rpc("conferencias_da_casa", { p_estab: s.casa.id, p_abertas: false, p_limite: 20 }),
     supabase.from("limites_conferencia_preco").select("id, categoria_id, limite_pct").eq("estabelecimento_id", s.casa.id),
     categorias("insumo"),
+    supabase.from("insumos").select("id, nome, dimensao").eq("ativo", true).order("nome"),
+    supabase.from("fornecedores").select("id, nome").eq("ativo", true).order("nome"),
   ])
   const comConferencia = !abertas.error
   const conferencias = new Map(((abertas.data ?? []) as Conferencia[]).map((c) => [c.historico_preco_id, c]))
@@ -56,11 +60,26 @@ export default async function Pendencias() {
     <div className="grid gap-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
-          <h1 className="text-xl font-semibold">Pendências</h1>
+          <h1 className="text-xl font-semibold">Compras</h1>
           <p className="text-sm text-muted-foreground">{s.casa.nome}</p>
         </div>
         <Link href="/pendencias/notas" className={buttonVariants({ className: "h-10 px-4" })}>Importar nota (XML)</Link>
       </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Lançar compra avulsa</CardTitle>
+          <CardDescription>
+            Compra sem nota fiscal (feira, mercado, emergência) em {s.casa.nome}. O custo do insumo é atualizado na hora;
+            alta acima do limite da casa vai para conferência aqui embaixo.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <CompraAvulsa acao={registrarCompraAvulsa} hoje={hojeSP()}
+            insumos={(listaInsumos.data ?? []) as { id: string; nome: string; dimensao: Dimensao }[]}
+            fornecedores={(listaFornecedores.data ?? []) as { id: string; nome: string }[]} />
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader>

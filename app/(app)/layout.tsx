@@ -8,7 +8,7 @@ export default async function LayoutApp({ children }: { children: React.ReactNod
   const itens = podeVerCustos(s)
     ? [
         { href: "/insumos", rotulo: "Insumos" },
-        { href: "/pendencias", rotulo: "Pendências" },
+        { href: "/pendencias", rotulo: "Compras" },
         { href: "/subprodutos", rotulo: "Subprodutos" },
         { href: "/fichas", rotulo: "Fichas" },
         { href: "/cmv", rotulo: "CMV" },
