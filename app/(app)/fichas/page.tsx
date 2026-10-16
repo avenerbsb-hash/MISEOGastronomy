@@ -38,10 +38,10 @@ function grupoDa(categoria: string | undefined): string {
   return c.startsWith("Drinks") ? "drinks" : COMIDA.has(c) ? "comida" : BEBIDAS.has(c) ? "bebidas" : "outros"
 }
 
-export default async function Fichas({ searchParams }: { searchParams: Promise<{ ordem?: string; q?: string; tipo?: string }> }) {
+export default async function Fichas({ searchParams }: { searchParams: Promise<{ ordem?: string; q?: string; tipo?: string; cardapio?: string }> }) {
   const s = await exigirCasa()
   const custos = podeVerCustos(s)
-  const { ordem, q = "", tipo: tipoBruto = "" } = await searchParams
+  const { ordem, q = "", tipo: tipoBruto = "", cardapio = "" } = await searchParams
   const tipo = GRUPOS.some((g) => g.valor === tipoBruto) ? tipoBruto : ""
   const termo = q.trim().replace(/[%,()]/g, " ")
   const supabase = await createClient()
@@ -52,26 +52,32 @@ export default async function Fichas({ searchParams }: { searchParams: Promise<{
     categorias("receita"),
   ])
   const nomes = nomesCategorias(cats)
-  const todas = (data ?? []) as Receita[]
-  const grupo = new Map(todas.map((r) => [r.id, grupoDa(r.categoria_id ? nomes.get(r.categoria_id) : undefined)]))
-  const conta = (g: string) => (g ? todas.filter((r) => grupo.get(r.id) === g).length : todas.length)
-  const receitas = tipo ? todas.filter((r) => grupo.get(r.id) === tipo) : todas
-  // links que mantêm busca, ordem e tipo
-  const href = (mudar: { ordem?: string; tipo?: string }) => {
-    const p = new URLSearchParams()
-    const o = mudar.ordem ?? (ordem === "cmv" ? "cmv" : "")
-    const tp = mudar.tipo ?? tipo
-    if (o) p.set("ordem", o)
-    if (q) p.set("q", q)
-    if (tp) p.set("tipo", tp)
-    const qs = p.toString()
-    return qs ? `/fichas?${qs}` : "/fichas"
-  }
+  const lidas = (data ?? []) as Receita[]
 
   // Produção não busca custo nem preço
   const [precos, variacoes] = custos
     ? await Promise.all([precosDasFichas(s.casa.id), variacoesDasReceitas(s.casa.id, "final")])
     : [new Map(), new Map()]
+  // "só no cardápio": esconde fichas sem item ativo no cardápio da casa
+  const soCardapio = custos && cardapio === "sim"
+  const todas = soCardapio ? lidas.filter((r) => precos.has(r.id)) : lidas
+  const foraDoCardapio = custos ? lidas.filter((r) => !precos.has(r.id)).length : 0
+  const grupo = new Map(todas.map((r) => [r.id, grupoDa(r.categoria_id ? nomes.get(r.categoria_id) : undefined)]))
+  const conta = (g: string) => (g ? todas.filter((r) => grupo.get(r.id) === g).length : todas.length)
+  const receitas = tipo ? todas.filter((r) => grupo.get(r.id) === tipo) : todas
+  // links que mantêm busca, ordem, tipo e "só no cardápio"
+  const href = (mudar: { ordem?: string; tipo?: string; cardapio?: string }) => {
+    const p = new URLSearchParams()
+    const o = mudar.ordem ?? (ordem === "cmv" ? "cmv" : "")
+    const tp = mudar.tipo ?? tipo
+    const cd = mudar.cardapio ?? (soCardapio ? "sim" : "")
+    if (o) p.set("ordem", o)
+    if (q) p.set("q", q)
+    if (tp) p.set("tipo", tp)
+    if (cd) p.set("cardapio", cd)
+    const qs = p.toString()
+    return qs ? `/fichas?${qs}` : "/fichas"
+  }
   const custoSemCardapio = new Map<string, number | null>()
   if (custos) {
     const fora = receitas.filter((r) => !precos.has(r.id))
@@ -101,8 +107,10 @@ export default async function Fichas({ searchParams }: { searchParams: Promise<{
 
       <AvisoAlertas quantidade={[...variacoes.values()].filter(emAlerta).length} um="ficha técnica subiu" varios="fichas técnicas subiram" ancora="fichas" />
 
-      <BuscaLista q={q} placeholder="Buscar ficha por nome ou código" manter={ordem === "cmv" || tipo ? { ...(ordem === "cmv" ? { ordem: "cmv" } : {}), ...(tipo ? { tipo } : {}) } : undefined} />
+      <BuscaLista q={q} placeholder="Buscar ficha por nome ou código" manter={ordem === "cmv" || tipo || soCardapio
+        ? { ...(ordem === "cmv" ? { ordem: "cmv" } : {}), ...(tipo ? { tipo } : {}), ...(soCardapio ? { cardapio: "sim" } : {}) } : undefined} />
 
+      <div className="flex flex-wrap items-center justify-between gap-2">
       <nav aria-label="Filtrar por tipo" className="flex flex-wrap gap-1.5 text-sm">
         {GRUPOS.map((g) => (
           <Link key={g.valor} href={href({ tipo: g.valor })} aria-current={tipo === g.valor ? "page" : undefined}
@@ -111,9 +119,20 @@ export default async function Fichas({ searchParams }: { searchParams: Promise<{
           </Link>
         ))}
       </nav>
+      {custos ? (
+        <Link href={href({ cardapio: soCardapio ? "" : "sim" })} role="switch" aria-checked={soCardapio}
+          className="inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-sm hover:bg-muted">
+          <span aria-hidden className={cn("relative h-4 w-7 rounded-full transition-colors", soCardapio ? "bg-foreground" : "bg-muted-foreground/30")}>
+            <span className={cn("absolute top-0.5 size-3 rounded-full bg-background transition-all", soCardapio ? "left-3.5" : "left-0.5")} />
+          </span>
+          Ocultar fora do cardápio
+          {foraDoCardapio ? <span className="tabular-nums text-muted-foreground">{foraDoCardapio}</span> : null}
+        </Link>
+      ) : null}
+      </div>
 
       {receitas.length === 0 ? (
-        <p className="rounded-xl border p-6 text-center text-sm text-muted-foreground">{q || tipo ? "Nenhuma ficha encontrada." : "Nenhuma ficha cadastrada."}</p>
+        <p className="rounded-xl border p-6 text-center text-sm text-muted-foreground">{q || tipo || soCardapio ? "Nenhuma ficha encontrada." : "Nenhuma ficha cadastrada."}</p>
       ) : (
         <ul className="divide-y rounded-xl border">
           {receitas.map((r) => {
