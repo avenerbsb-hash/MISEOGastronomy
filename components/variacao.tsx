@@ -1,4 +1,5 @@
-import { dataCurta, percentual } from "@/lib/formato"
+import { dataCurta } from "@/lib/formato"
+import { pctPreciso } from "@/components/indicador-preco"
 import { CORES_STATUS, statusDoSinal, type StatusPreco } from "@/components/status-preco"
 
 const ROTULO: Record<StatusPreco, string> = {
@@ -11,8 +12,8 @@ export function BadgeVariacao({ sinal, pct, temPreco = true }: { sinal?: string 
   const cor = CORES_STATUS[status]
   let texto: string
   if (status === "subiu" || status === "caiu") {
-    const p = Number(pct)
-    texto = `${status === "subiu" ? "▲" : "▼"} ${Math.abs(p) < 0.05 ? (status === "subiu" ? "+<0,1%" : "−<0,1%") : percentual(p, true).replace("-", "−")}`
+    // casas decimais suficientes para não mostrar 0,0% numa variação que existe
+    texto = `${status === "subiu" ? "▲" : "▼"} ${pctPreciso(Number(pct))}`
   } else if (status === "estavel") {
     texto = "= 0,0%"
   } else {

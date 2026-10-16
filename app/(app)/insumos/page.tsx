@@ -1,7 +1,8 @@
 import type { Metadata } from "next"
 import Link from "next/link"
 import { exigirCustos } from "@/lib/sessao"
-import { custoPorUnidade, dataCurta } from "@/lib/formato"
+import { custoPorUnidade, dataCurta, nomeMes, ultimosMeses } from "@/lib/formato"
+import { SeloIndicador } from "@/components/indicador-preco"
 import { BadgeVariacao } from "@/components/variacao"
 import { COR_TODOS, CORES_STATUS } from "@/components/status-preco"
 import { Entrada, Selecao } from "@/components/campos"
@@ -15,12 +16,12 @@ export const metadata: Metadata = { title: "Insumos" }
 
 export default async function PaginaInsumos({ searchParams }: { searchParams: Promise<ParamsInsumos> }) {
   const s = await exigirCustos()
-  const { q, categoria, filtro, ordem, cats, nomes, variacoes, insumos, contagem, erro } =
+  const { q, categoria, filtro, ordem, cats, nomes, variacoes, indicadores, mes, insumos, contagem, erro } =
     await carregarInsumos(s.casa.id, await searchParams)
 
   const link = (base: string, mudar: Partial<ParamsInsumos> = {}) => {
     const p = new URLSearchParams()
-    const final = { q, categoria, variacao: filtro, ordem: ordem === "nome" ? "" : ordem, ...mudar }
+    const final = { q, categoria, variacao: filtro, ordem: ordem === "nome" ? "" : ordem, mes, ...mudar }
     for (const [k, v] of Object.entries(final)) if (v) p.set(k, v)
     const qs = p.toString()
     return qs ? `${base}?${qs}` : base
@@ -42,7 +43,7 @@ export default async function PaginaInsumos({ searchParams }: { searchParams: Pr
 
       <AvisoAlertas quantidade={[...variacoes.values()].filter(emAlerta).length} um="insumo subiu" varios="insumos subiram" ancora="insumos" />
 
-      <form className="grid gap-2 sm:grid-cols-[1fr_16rem_14rem_auto]" role="search">
+      <form className="grid gap-2 sm:grid-cols-[1fr_14rem_12rem_11rem_auto]" role="search">
         <Entrada name="q" defaultValue={q} placeholder="Buscar por nome ou código" aria-label="Buscar" />
         <Selecao name="categoria" defaultValue={categoria} aria-label="Categoria">
           <option value="">Todas as categorias</option>
@@ -53,6 +54,11 @@ export default async function PaginaInsumos({ searchParams }: { searchParams: Pr
         <Selecao name="ordem" defaultValue={ordem} aria-label="Ordenar por">
           {(Object.keys(ORDENS) as Ordem[]).map((o) => (
             <option key={o} value={o}>Ordenar: {ORDENS[o]}</option>
+          ))}
+        </Selecao>
+        <Selecao name="mes" defaultValue={mes} aria-label="Mês da tendência mensal">
+          {ultimosMeses(12).map((m, k) => (
+            <option key={m.valor} value={k === 0 ? "" : m.valor}>Mês: {m.rotulo}{k === 0 ? " (atual)" : ""}</option>
           ))}
         </Selecao>
         {filtro ? <input type="hidden" name="variacao" value={filtro} /> : null}
@@ -88,34 +94,67 @@ export default async function PaginaInsumos({ searchParams }: { searchParams: Pr
       {insumos.length === 0 ? (
         <p className="rounded-xl border p-6 text-center text-sm text-muted-foreground">Nenhum insumo encontrado.</p>
       ) : (
-        <ul className="divide-y rounded-xl border">
-          {insumos.map((i) => {
-            const v = variacoes.get(i.id)
-            return (
-              <li key={i.id}>
-                <Link href={`/insumos/${i.id}`} className="grid gap-1 px-4 py-3 hover:bg-muted/50 sm:grid-cols-[1fr_auto] sm:items-center">
-                  <div className="min-w-0">
-                    <div className="font-medium">
-                      {i.nome} {!i.ativo && <span className="text-xs font-normal text-muted-foreground">(inativo)</span>}
+        <div className="overflow-hidden rounded-xl border">
+          {indicadores ? (
+            <div className="hidden grid-cols-[minmax(0,1fr)_8.5rem_8.5rem_8.5rem_6rem] gap-3 border-b bg-muted/50 px-4 py-2 text-xs text-muted-foreground sm:grid">
+              <span>Insumo</span>
+              <span className="text-right">Última compra</span>
+              <span className="text-right" title="Variação entre as duas últimas compras validadas">Variação da compra</span>
+              <span className="text-right" title="Média ponderada do mês contra o mês anterior">
+                Tendência {nomeMes([...indicadores.values()][0]?.mes ?? "")}{[...indicadores.values()][0]?.mes_encerrado === false ? "*" : ""}
+              </span>
+              <span className="text-right">Data</span>
+            </div>
+          ) : null}
+          <ul className="divide-y">
+            {insumos.map((i) => {
+              const v = variacoes.get(i.id)
+              const ind = indicadores?.get(i.id)
+              if (!indicadores) {
+                // sem a migração 0012: linha antiga
+                return (
+                  <li key={i.id}>
+                    <Link href={`/insumos/${i.id}`} className="grid gap-1 px-4 py-3 hover:bg-muted/50 sm:grid-cols-[1fr_auto] sm:items-center">
+                      <div className="min-w-0">
+                        <div className="font-medium">{i.nome} {!i.ativo && <span className="text-xs font-normal text-muted-foreground">(inativo)</span>}</div>
+                        <div className="text-xs text-muted-foreground">{i.codigo}{i.categoria_id ? ` · ${nomes.get(i.categoria_id)}` : ""}</div>
+                      </div>
+                      <div className="grid gap-0.5 sm:justify-items-end">
+                        <span className="inline-flex flex-wrap items-center gap-2">
+                          {v ? <span className="font-medium tabular-nums text-foreground">{custoPorUnidade(v.custo_atual, i.dimensao)}</span> : null}
+                          <BadgeVariacao sinal={v?.sinal} pct={v?.variacao_pct} temPreco={!!v} />
+                        </span>
+                        <span className="text-xs text-muted-foreground">{v ? `compra de ${dataCurta(v.data_referencia)} · ${s.casa.nome}` : `nesta casa · ${s.casa.nome}`}</span>
+                      </div>
+                    </Link>
+                  </li>
+                )
+              }
+              const custo = ind?.ultimo_preco ?? ind?.custo_oficial ?? null
+              return (
+                <li key={i.id}>
+                  <Link href={`/insumos/${i.id}`}
+                    className="grid gap-1.5 px-4 py-3 hover:bg-muted/50 sm:grid-cols-[minmax(0,1fr)_8.5rem_8.5rem_8.5rem_6rem] sm:items-center sm:gap-3">
+                    <div className="min-w-0">
+                      <div className="font-medium">{i.nome} {!i.ativo && <span className="text-xs font-normal text-muted-foreground">(inativo)</span>}</div>
+                      <div className="text-xs text-muted-foreground">{i.codigo}{i.categoria_id ? ` · ${nomes.get(i.categoria_id)}` : ""}</div>
                     </div>
-                    <div className="text-xs text-muted-foreground">
-                      {i.codigo}{i.categoria_id ? ` · ${nomes.get(i.categoria_id)}` : ""}
+                    <div className="flex items-baseline justify-between gap-2 sm:block sm:text-right">
+                      <span className="font-medium tabular-nums">{custo != null ? custoPorUnidade(custo, i.dimensao) : <span className="text-sm font-normal text-muted-foreground">—</span>}</span>
+                      {ind?.custo_oficial_referencia ? <span className="block text-[11px] text-muted-foreground">preço de referência</span> : null}
+                      <span className="text-xs text-muted-foreground sm:hidden">{ind?.data_ultima_compra ? `compra de ${dataCurta(ind.data_ultima_compra)}` : ""}</span>
                     </div>
-                  </div>
-                  <div className="grid gap-0.5 sm:justify-items-end">
-                    <span className="inline-flex flex-wrap items-center gap-2">
-                      {v ? <span className="font-medium tabular-nums text-foreground">{custoPorUnidade(v.custo_atual, i.dimensao)}</span> : null}
-                      <BadgeVariacao sinal={v?.sinal} pct={v?.variacao_pct} temPreco={!!v} />
-                    </span>
-                    <span className="text-xs text-muted-foreground">
-                      {v ? `compra de ${dataCurta(v.data_referencia)} · ${s.casa.nome}` : `nesta casa · ${s.casa.nome}`}
-                    </span>
-                  </div>
-                </Link>
-              </li>
-            )
-          })}
-        </ul>
+                    <div className="flex flex-wrap gap-1.5 sm:contents">
+                      <span className="sm:text-right"><SeloIndicador status={ind?.status_ultima ?? "sem_preco"} pct={ind?.variacao_ultima_pct} rotulo="Compra" /></span>
+                      <span className="sm:text-right"><SeloIndicador status={ind?.status_mensal ?? "sem_base"} pct={ind?.variacao_mensal_pct} rotulo="Mês" /></span>
+                    </div>
+                    <span className="hidden text-right text-xs tabular-nums text-muted-foreground sm:block">{ind?.data_ultima_compra ? dataCurta(ind.data_ultima_compra) : "—"}</span>
+                  </Link>
+                </li>
+              )
+            })}
+          </ul>
+        </div>
       )}
     </div>
   )

@@ -36,6 +36,8 @@ select pg_temp.ok('Requeijão 1,5 kg a R$ 61,28 = R$ 40,85/kg',
 insert into auth.users values ('00000000-0000-0000-0000-0000000000a1', 'admin@jf.test');
 insert into perfis (user_id, nome, admin) values ('00000000-0000-0000-0000-0000000000a1', 'Admin', true);
 set request.jwt.claim.sub = '00000000-0000-0000-0000-0000000000a1';
+-- este teste confere a conversão, não a conferência de altas (0012): limite alto nas casas
+insert into limites_conferencia_preco (estabelecimento_id, limite_pct) select id, 9999 from estabelecimentos;
 select pg_temp.ok('confirmar 30 ovos por bandeja importa 11 notas',
   confirmar_conversao((select id from fornecedores where nome = 'Com. de Melancias (Flor de Goiás)'), 'OVOS BRANCO GRANDE', 30, 'un') = 11);
 select pg_temp.ok('ovo no Giuli = R$ 0,60 (R$ 18 / 30)',

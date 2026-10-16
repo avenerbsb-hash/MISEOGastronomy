@@ -134,3 +134,27 @@ export function emAlerta(v: { variacao_pct: number | null; data_referencia: stri
   const corte = new Date(Date.now() - DIAS_ALERTA * 864e5).toISOString().slice(0, 10)
   return Number(v.variacao_pct) > LIMITE_ALERTA && v.data_referencia >= corte
 }
+
+// ------------------------------------------------------------------ inteligência de preços (migração 0012)
+// A = duas últimas compras validadas · B = média ponderada do mês × mês anterior · C = amplitude no mês
+export type IndicadorInsumo = {
+  insumo_id: string; custo_oficial: number | null; custo_oficial_referencia: boolean
+  data_ultima_compra: string | null; ultimo_preco: number | null; preco_anterior: number | null
+  variacao_ultima_pct: number | null; status_ultima: "subiu" | "caiu" | "estavel" | "sem_comparacao" | "sem_preco"
+  mes: string; mes_encerrado: boolean; media_mes: number | null; media_mes_anterior: number | null
+  variacao_mensal_pct: number | null; status_mensal: "subiu" | "caiu" | "estavel" | "sem_base"
+  compras_mes: number; volatilidade_pct: number | null; status_volatilidade: "ok" | "indisponivel"
+}
+
+// null quando a migração 0012 ainda não foi aplicada (as telas usam a variação antiga)
+export async function indicadoresDaCasa(estab: string, mes?: string): Promise<Map<string, IndicadorInsumo> | null> {
+  const supabase = await createClient()
+  const { data, error } = await supabase.rpc("indicadores_insumos", { p_estab: estab, p_mes: mes ?? null })
+  if (error) return null
+  return new Map(((data ?? []) as IndicadorInsumo[]).map((i) => [i.insumo_id, i]))
+}
+
+// "2026-10" → "2026-10-01"; inválido → undefined (mês atual da casa)
+export function mesDoParametro(v: string | undefined): string | undefined {
+  return v && /^\d{4}-(0[1-9]|1[0-2])$/.test(v) ? `${v}-01` : undefined
+}

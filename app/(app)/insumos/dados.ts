@@ -1,6 +1,6 @@
 import "server-only"
 import { createClient } from "@/lib/supabase/server"
-import { categorias, nomesCategorias, variacoesDaCasa, type Insumo, type VariacaoInsumo } from "@/lib/dados"
+import { categorias, indicadoresDaCasa, mesDoParametro, nomesCategorias, variacoesDaCasa, type Insumo, type VariacaoInsumo } from "@/lib/dados"
 
 // Busca, filtro e ordenação da lista de insumos (tela e relatório usam a mesma regra)
 
@@ -28,7 +28,7 @@ export const ORDENS = {
 } as const
 export type Ordem = keyof typeof ORDENS
 
-export type ParamsInsumos = { q?: string; categoria?: string; variacao?: string; ordem?: string }
+export type ParamsInsumos = { q?: string; categoria?: string; variacao?: string; ordem?: string; mes?: string }
 export type LinhaInsumo = Pick<Insumo, "id" | "codigo" | "nome" | "dimensao" | "categoria_id" | "ativo">
 
 export async function carregarInsumos(casaId: string, params: ParamsInsumos) {
@@ -53,22 +53,26 @@ export async function carregarInsumos(casaId: string, params: ParamsInsumos) {
     const ids = [categoria, ...cats.filter((c) => c.pai_id === categoria).map((c) => c.id)]
     consulta = consulta.in("categoria_id", ids)
   }
-  const [{ data, error }, variacoes] = await Promise.all([consulta, variacoesDaCasa(casaId)])
+  const mesISO = mesDoParametro(params.mes)
+  const [{ data, error }, variacoes, indicadores] = await Promise.all([consulta, variacoesDaCasa(casaId), indicadoresDaCasa(casaId, mesISO)])
+  // Indicador A (0012) quando disponível; senão a variação antiga
+  const sit = (id: string): Situacao => (indicadores ? indicadores.get(id)?.status_ultima ?? "sem_preco" : situacao(variacoes.get(id)))
+  const pctA = (id: string) => (indicadores ? indicadores.get(id)?.variacao_ultima_pct : variacoes.get(id)?.variacao_pct)
   const todos = (data ?? []) as LinhaInsumo[]
 
   const contagem = new Map<string, number>([["", todos.length]])
   for (const i of todos) {
-    const k = situacao(variacoes.get(i.id))
+    const k = sit(i.id)
     contagem.set(k, (contagem.get(k) ?? 0) + 1)
   }
-  const insumos = filtro ? todos.filter((i) => situacao(variacoes.get(i.id)) === filtro) : [...todos]
+  const insumos = filtro ? todos.filter((i) => sit(i.id) === filtro) : [...todos]
 
   // Ordenação pela variação que o banco calculou; sem variação vai para o fim
   if (ordem !== "nome") {
     const sentido = ordem === "alta" ? -1 : 1
     insumos.sort((a, b) => {
-      const va = variacoes.get(a.id)?.variacao_pct
-      const vb = variacoes.get(b.id)?.variacao_pct
+      const va = pctA(a.id)
+      const vb = pctA(b.id)
       if (va == null && vb == null) return a.nome.localeCompare(b.nome, "pt-BR")
       if (va == null) return 1
       if (vb == null) return -1
@@ -76,5 +80,5 @@ export async function carregarInsumos(casaId: string, params: ParamsInsumos) {
     })
   }
 
-  return { q, categoria, filtro, ordem, cats, nomes, variacoes, todos, insumos, contagem, erro: !!error }
+  return { q, categoria, filtro, ordem, cats, nomes, variacoes, indicadores, mes: mesISO?.slice(0, 7) ?? "", sit, todos, insumos, contagem, erro: !!error }
 }

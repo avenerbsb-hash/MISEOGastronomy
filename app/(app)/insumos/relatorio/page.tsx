@@ -1,10 +1,11 @@
 import type { Metadata } from "next"
 import Link from "next/link"
 import { exigirCustos, obterSessao } from "@/lib/sessao"
-import { custoPorUnidade, dataCurta, dataHora, hojeSP, percentual } from "@/lib/formato"
+import { custoPorUnidade, dataCurta, dataHora, hojeSP } from "@/lib/formato"
+import { pctPreciso } from "@/components/indicador-preco"
 import { BotaoImprimir } from "@/components/botao-imprimir"
 import { cn } from "@/lib/utils"
-import { carregarInsumos, FILTROS, ORDENS, situacao, type ParamsInsumos } from "../dados"
+import { carregarInsumos, FILTROS, ORDENS, type ParamsInsumos } from "../dados"
 
 // O título vira o nome sugerido do arquivo PDF
 export async function generateMetadata(): Promise<Metadata> {
@@ -15,7 +16,7 @@ export async function generateMetadata(): Promise<Metadata> {
 export default async function RelatorioInsumos({ searchParams }: { searchParams: Promise<ParamsInsumos> }) {
   const s = await exigirCustos()
   const params = await searchParams
-  const { q, categoria, filtro, ordem, nomes, variacoes, insumos, contagem } = await carregarInsumos(s.casa.id, params)
+  const { q, categoria, filtro, ordem, nomes, variacoes, indicadores, sit, insumos, contagem } = await carregarInsumos(s.casa.id, params)
 
   const filtrosUsados = [
     q ? `busca “${q}”` : null,
@@ -71,26 +72,30 @@ export default async function RelatorioInsumos({ searchParams }: { searchParams:
           </thead>
           <tbody>
             {insumos.map((i) => {
+              // indicador A (0012) quando disponível; senão a variação antiga
+              const ind = indicadores?.get(i.id)
               const v = variacoes.get(i.id)
-              const sit = situacao(v)
-              const pct = v?.variacao_pct
+              const st = sit(i.id)
+              const pct = ind ? ind.variacao_ultima_pct : v?.variacao_pct
+              const atual = ind ? ind.ultimo_preco ?? ind.custo_oficial : v?.custo_atual
+              const anterior = ind ? ind.preco_anterior : v?.custo_anterior
+              const data = ind ? ind.data_ultima_compra : v?.data_referencia
               return (
                 <tr key={i.id} className="break-inside-avoid border-b border-border/60 align-top">
                   <td className="py-1.5 pr-2 whitespace-nowrap text-muted-foreground">{i.codigo}</td>
                   <td className="py-1.5 pr-2 font-medium">{i.nome}{!i.ativo ? " (inativo)" : ""}</td>
                   <td className="py-1.5 pr-2 text-muted-foreground">{i.categoria_id ? nomes.get(i.categoria_id)?.split(" › ").pop() : "—"}</td>
-                  <td className="py-1.5 pr-2 text-right whitespace-nowrap tabular-nums">{v ? custoPorUnidade(v.custo_atual, i.dimensao) : "sem preço"}</td>
-                  <td className="py-1.5 pr-2 text-right whitespace-nowrap tabular-nums text-muted-foreground">{v?.custo_anterior != null ? custoPorUnidade(v.custo_anterior, i.dimensao) : "—"}</td>
+                  <td className="py-1.5 pr-2 text-right whitespace-nowrap tabular-nums">{atual != null ? custoPorUnidade(atual, i.dimensao) : "sem preço"}</td>
+                  <td className="py-1.5 pr-2 text-right whitespace-nowrap tabular-nums text-muted-foreground">{anterior != null ? custoPorUnidade(anterior, i.dimensao) : "—"}</td>
                   <td className={cn(
                     "py-1.5 pr-2 text-right whitespace-nowrap tabular-nums",
-                    sit === "subiu" && "text-red-700", sit === "caiu" && "text-emerald-700",
+                    st === "subiu" && "text-red-700", st === "caiu" && "text-emerald-700",
                   )}>
-                    {sit === "subiu" ? "▲ " : sit === "caiu" ? "▼ " : ""}
-                    {sit === "subiu" || sit === "caiu"
-                      ? (Math.abs(Number(pct)) < 0.05 ? (sit === "subiu" ? "+<0,1%" : "−<0,1%") : percentual(pct, true))
-                      : sit === "estavel" ? "= 0,0%" : "—"}
+                    {st === "subiu" ? "▲ " : st === "caiu" ? "▼ " : ""}
+                    {(st === "subiu" || st === "caiu") && pct != null ? pctPreciso(pct)
+                      : st === "estavel" ? "= 0,0%" : st === "sem_comparacao" ? "sem comparação" : "—"}
                   </td>
-                  <td className="py-1.5 text-right whitespace-nowrap tabular-nums text-muted-foreground">{v ? dataCurta(v.data_referencia) : "—"}</td>
+                  <td className="py-1.5 text-right whitespace-nowrap tabular-nums text-muted-foreground">{data ? dataCurta(data) : "—"}</td>
                 </tr>
               )
             })}

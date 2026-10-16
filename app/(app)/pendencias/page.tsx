@@ -8,7 +8,9 @@ import { FormAcao, BotaoEnviar } from "@/components/form-acao"
 import { Entrada, Selecao } from "@/components/campos"
 import { buttonVariants } from "@/components/ui/button"
 import { validarPreco } from "../insumos/actions"
-import { registrarRecebimento } from "./actions"
+import { registrarRecebimento, removerLimite, resolverConferencia, salvarLimite } from "./actions"
+import { categorias, nomesCategorias } from "@/lib/dados"
+import { ConferenciaAberta, ConferenciasResolvidas, LimitesConferencia, type Conferencia, type Limite } from "@/components/conferencias"
 
 export const metadata: Metadata = { title: "Pendências" }
 
@@ -28,7 +30,7 @@ type Nota = {
 export default async function Pendencias() {
   const s = await exigirCustos()
   const supabase = await createClient()
-  const [precos, notas] = await Promise.all([
+  const [precos, notas, abertas, resolvidas, limites, cats] = await Promise.all([
     supabase.from("historico_precos")
       .select("id, data_compra, quantidade, unidade, valor_total, custo_unitario_base, observacao, insumos(id, nome, dimensao), fornecedores(nome)")
       .eq("estabelecimento_id", s.casa.id).eq("status", "pendente")
@@ -37,7 +39,16 @@ export default async function Pendencias() {
       .select("id, data_compra, descricao_original, unidade_nota, quantidade_nota, valor_total, status, documento_ref, insumos(id, nome, dimensao), fornecedores(nome)")
       .eq("estabelecimento_id", s.casa.id).in("status", ["pendente", "ignorado"]).not("insumo_id", "is", null)
       .order("data_compra", { ascending: false }).limit(200),
+    // conferência de altas (0012); sem a migração, os cards não aparecem
+    supabase.rpc("conferencias_da_casa", { p_estab: s.casa.id, p_abertas: true, p_limite: 200 }),
+    supabase.rpc("conferencias_da_casa", { p_estab: s.casa.id, p_abertas: false, p_limite: 20 }),
+    supabase.from("limites_conferencia_preco").select("id, categoria_id, limite_pct").eq("estabelecimento_id", s.casa.id),
+    categorias("insumo"),
   ])
+  const comConferencia = !abertas.error
+  const conferencias = new Map(((abertas.data ?? []) as Conferencia[]).map((c) => [c.historico_preco_id, c]))
+  const nomesCat = nomesCategorias(cats)
+  const opcoesCat = cats.map((c) => ({ id: c.id, nome: nomesCat.get(c.id) ?? c.nome }))
   const listaPrecos = (precos.data ?? []) as unknown as Preco[]
   const listaNotas = (notas.data ?? []) as unknown as Nota[]
 
@@ -54,11 +65,16 @@ export default async function Pendencias() {
       <Card>
         <CardHeader>
           <CardTitle>Compras aguardando validação ({listaPrecos.length})</CardTitle>
-          <CardDescription>O custo do insumo só muda depois de validado.</CardDescription>
+          <CardDescription>
+            O custo do insumo só muda depois de validado.
+            {conferencias.size ? ` ${conferencias.size} com alta acima do limite: confira com justificativa.` : ""}
+          </CardDescription>
         </CardHeader>
         <CardContent className="grid gap-3">
           {listaPrecos.length === 0 ? <p className="text-sm text-muted-foreground">Nada pendente.</p> : null}
-          {listaPrecos.map((p) => (
+          {listaPrecos.map((p) => conferencias.has(p.id) ? (
+            <ConferenciaAberta key={p.id} c={conferencias.get(p.id)!} acao={resolverConferencia.bind(null, conferencias.get(p.id)!.id)} />
+          ) : (
             <div key={p.id} className="grid gap-2 rounded-lg border p-3">
               <div className="flex flex-wrap justify-between gap-2 text-sm">
                 <span>
@@ -112,6 +128,27 @@ export default async function Pendencias() {
           })}
         </CardContent>
       </Card>
+      {comConferencia ? (
+        <div className="grid gap-4 lg:grid-cols-[1fr_1fr]">
+          <Card>
+            <CardHeader>
+              <CardTitle>Conferências resolvidas</CardTitle>
+              <CardDescription>Últimas 20, com a justificativa e o responsável.</CardDescription>
+            </CardHeader>
+            <CardContent><ConferenciasResolvidas lista={(resolvidas.data ?? []) as Conferencia[]} /></CardContent>
+          </Card>
+          <Card>
+            <CardHeader>
+              <CardTitle>Limite de conferência</CardTitle>
+              <CardDescription>Compra com alta acima deste percentual sobre o custo validado fica pendente para conferência em {s.casa.nome}. Nenhuma compra é rejeitada automaticamente.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <LimitesConferencia limites={(limites.data ?? []) as Limite[]} categorias={opcoesCat}
+                salvar={salvarLimite} remover={(id) => removerLimite.bind(null, id)} />
+            </CardContent>
+          </Card>
+        </div>
+      ) : null}
     </div>
   )
 }

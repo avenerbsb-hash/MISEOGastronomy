@@ -1,8 +1,9 @@
 import Link from "next/link"
 import { createClient } from "@/lib/supabase/server"
 import { exigirCustos } from "@/lib/sessao"
-import { variacoesDaCasa } from "@/lib/dados"
-import { custoPorUnidade, dataCurta, hojeSP, numero, reais, rotuloUnidade, UNIDADES_POR_DIMENSAO, type Dimensao } from "@/lib/formato"
+import { indicadoresDaCasa, mesDoParametro, variacoesDaCasa } from "@/lib/dados"
+import { IndicadoresInsumo, type LinhaMensal } from "@/components/indicadores-insumo"
+import { custoPorUnidade, dataCurta, hojeSP, numero, reais, rotuloUnidade, ultimosMeses, UNIDADES_POR_DIMENSAO, type Dimensao } from "@/lib/formato"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { BadgeVariacao, Variacao } from "@/components/variacao"
 import { FormAcao, BotaoEnviar } from "@/components/form-acao"
@@ -19,12 +20,13 @@ type Pendente = {
   fornecedores: { nome: string } | null
 }
 
-export default async function ResumoInsumo({ params }: { params: Promise<{ id: string }> }) {
+export default async function ResumoInsumo({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ mes?: string }> }) {
   const s = await exigirCustos()
   const { id } = await params
+  const mesISO = mesDoParametro((await searchParams).mes)
   const supabase = await createClient()
 
-  const [{ data: insumo }, variacoes, medir, fornecedores, pendentes, impactadas, ranking] = await Promise.all([
+  const [{ data: insumo }, variacoes, medir, fornecedores, pendentes, impactadas, ranking, indicadores, mensal] = await Promise.all([
     supabase.from("insumos").select("nome, dimensao").eq("id", id).single(),
     variacoesDaCasa(s.casa.id),
     supabase.from("alias_insumo").select("descricao_original").eq("insumo_id", id).eq("medir_no_recebimento", true),
@@ -37,6 +39,9 @@ export default async function ResumoInsumo({ params }: { params: Promise<{ id: s
     supabase.rpc("impacto_insumo_fichas", { p_insumo: id, p_estab: s.casa.id })
       .then((r) => (r.error ? supabase.rpc("fichas_impactadas", { p_insumo: id, p_estab: s.casa.id }) : r)),
     supabase.rpc("fornecedores_do_insumo", { p_insumo: id, p_estab: s.casa.id, p_compras: COMPRAS_RANKING }),
+    // indicadores A/B/C e histórico mensal (0012); sem a migração o card não aparece
+    indicadoresDaCasa(s.casa.id, mesISO),
+    supabase.rpc("historico_mensal_insumo", { p_insumo: id, p_estab: s.casa.id, p_meses: 12 }),
   ])
   if (!insumo) return null
   const dim = insumo.dimensao as Dimensao
@@ -51,6 +56,25 @@ export default async function ResumoInsumo({ params }: { params: Promise<{ id: s
 
   return (
     <div className="grid gap-4 lg:grid-cols-[1fr_1fr]">
+      {indicadores && !mensal.error ? (
+        <Card className="lg:col-span-2">
+          <CardHeader className="flex flex-row flex-wrap items-start justify-between gap-2">
+            <div className="grid gap-1">
+              <CardTitle>Inteligência de preços</CardTitle>
+              <CardDescription>Compras validadas em {s.casa.nome}. Pendentes, rejeitadas e preços de referência não entram.</CardDescription>
+            </div>
+            <form className="flex items-center gap-2">
+              <Selecao name="mes" defaultValue={mesISO?.slice(0, 7) ?? ""} aria-label="Mês" className="h-9 w-auto">
+                {ultimosMeses(12).map((m, k) => <option key={m.valor} value={k === 0 ? "" : m.valor}>{m.rotulo}{k === 0 ? " (atual)" : ""}</option>)}
+              </Selecao>
+              <button type="submit" className="h-9 rounded-md border px-3 text-sm hover:bg-muted">Ver mês</button>
+            </form>
+          </CardHeader>
+          <CardContent>
+            <IndicadoresInsumo ind={indicadores.get(id)} historico={(mensal.data ?? []) as LinhaMensal[]} dim={dim} />
+          </CardContent>
+        </Card>
+      ) : null}
       <Card>
         <CardHeader>
           <CardTitle>Custo atual em {s.casa.nome}</CardTitle>

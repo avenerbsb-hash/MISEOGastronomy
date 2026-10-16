@@ -74,3 +74,21 @@ export const NOME_DIMENSAO: Record<Dimensao, string> = {
 export function rotuloUnidade(codigo: string): string {
   return codigo === "l" ? "L" : codigo === "ml" ? "mL" : codigo
 }
+
+// "2026-10-01" → "outubro/2026"
+const MESES = ["janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"]
+export function nomeMes(iso: string): string {
+  if (!iso) return ""
+  const [a, m] = iso.slice(0, 7).split("-")
+  return `${MESES[Number(m) - 1]}/${a}`
+}
+
+// Últimos n meses do calendário de São Paulo, do atual para trás: [{ valor: "2026-10", rotulo: "outubro/2026" }, …]
+export function ultimosMeses(n = 12): { valor: string; rotulo: string }[] {
+  const [a, m] = hojeSP().split("-").map(Number)
+  return Array.from({ length: n }, (_, k) => {
+    const t = a * 12 + (m - 1) - k
+    const valor = `${Math.floor(t / 12)}-${String((t % 12) + 1).padStart(2, "0")}`
+    return { valor, rotulo: nomeMes(valor) }
+  })
+}

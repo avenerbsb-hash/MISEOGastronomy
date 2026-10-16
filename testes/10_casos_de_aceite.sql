@@ -16,6 +16,10 @@ set request.jwt.claim.sub = '00000000-0000-0000-0000-0000000000a1';
 insert into estabelecimentos (id, nome, cmv_alvo_padrao, regra_arredondamento) values
   ('00000000-0000-0000-0000-0000000000e1', 'Alma Boutique Bar & Restaurante', 30, 'x90'),
   ('00000000-0000-0000-0000-0000000000e2', 'Recreio Bar', 28, 'x90');
+-- Estes testes lançam altas grandes de propósito e esperam a validação na hora:
+-- limite de conferência alto (0012). O teste 99 volta ao padrão de 15%.
+insert into limites_conferencia_preco (estabelecimento_id, limite_pct) values
+  ('00000000-0000-0000-0000-0000000000e1', 9999), ('00000000-0000-0000-0000-0000000000e2', 9999);
 
 insert into perfis (user_id, nome, admin) values
   ('00000000-0000-0000-0000-0000000000a1', 'Admin', true),
