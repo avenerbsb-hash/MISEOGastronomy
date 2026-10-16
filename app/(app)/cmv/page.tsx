@@ -1,7 +1,7 @@
 import type { Metadata } from "next"
 import { createClient } from "@/lib/supabase/server"
 import { exigirCustos } from "@/lib/sessao"
-import { PainelCmv, FILTROS_CMV, type BlocoItem, type ItemDesativado, type LinhaCmv, type ResultadoItem } from "@/components/painel-cmv"
+import { PainelCmv, FILTROS_CMV, NOTAS_MEDIA, type BlocoItem, type CustoMedia, type ItemDesativado, type LinhaCmv, type ResultadoItem } from "@/components/painel-cmv"
 import { EstruturaCustos, type Estrutura } from "@/components/estrutura-custos"
 import { FormAcao, BotaoEnviar } from "@/components/form-acao"
 import { Entrada } from "@/components/campos"
@@ -15,7 +15,7 @@ export default async function Cmv({ searchParams }: { searchParams: Promise<{ si
   const { situacao = "", ver = "", bloco = "" } = await searchParams
   const filtro = FILTROS_CMV.some((f) => f.valor === situacao) ? situacao : ""
   const supabase = await createClient()
-  const [painel, casa, inativos, secoes, estrutura, resultado] = await Promise.all([
+  const [painel, casa, inativos, secoes, estrutura, resultado, mediaNotas] = await Promise.all([
     supabase.rpc("painel_cmv_casa", { p_estab: s.casa.id }),
     supabase.rpc("cmv_da_casa", { p_estab: s.casa.id }),
     supabase.from("itens_cardapio")
@@ -27,7 +27,11 @@ export default async function Cmv({ searchParams }: { searchParams: Promise<{ si
     // estrutura de custos e resultado na ponta (0013); sem a migração, o painel segue sem eles
     supabase.rpc("estrutura_custos", { p_estab: s.casa.id }),
     supabase.rpc("resultado_itens_casa", { p_estab: s.casa.id }),
+    // custo atual × média das últimas notas (0017); sem a migração, o selo não aparece
+    supabase.rpc("custo_vs_media_casa", { p_estab: s.casa.id, p_n: NOTAS_MEDIA }),
   ])
+  const medias = mediaNotas.error ? undefined
+    : new Map(((mediaNotas.data ?? []) as CustoMedia[]).map((m) => [m.item_id, m]))
   const est = estrutura.error ? null : ((estrutura.data ?? []) as Estrutura[])[0] ?? null
   const resultados = resultado.error ? undefined
     : new Map(((resultado.data ?? []) as ResultadoItem[]).map((r) => [r.item_id, r]))
@@ -89,5 +93,5 @@ export default async function Cmv({ searchParams }: { searchParams: Promise<{ si
 
   return <PainelCmv linhas={linhas} filtro={filtro} media={media} meta={Number(meta)} metaDefinida={metaDefinida} casa={s.casa.nome} formMeta={formMeta}
     desativados={desativados} botaoItem={botaoItem} blocos={blocos} agrupado={ver !== "lista"} moverItem={moverItem}
-    bloco={bloco.slice(0, 120)} resultados={resultados} estrutura={est ? <EstruturaCustos e={est} salvar={salvarEstrutura} restaurar={restaurarEstrutura} /> : null} />
+    bloco={bloco.slice(0, 120)} resultados={resultados} medias={medias} estrutura={est ? <EstruturaCustos e={est} salvar={salvarEstrutura} restaurar={restaurarEstrutura} /> : null} />
 }

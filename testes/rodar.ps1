@@ -61,6 +61,7 @@ try {
   P aceite  'testes/100_estrutura_custos.sql'
   P aceite  'testes/101_acumulado_anual.sql'
   P aceite  'testes/102_estorno_compra.sql'
+  P aceite  'testes/103_custo_media_notas.sql'
   P seed    'supabase/seed/01_insumos_giuli.sql'
   P seed    'testes/20_seed_giuli.sql'
   P seed    'supabase/seed/03_categorias.sql' -Silencioso

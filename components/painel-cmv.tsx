@@ -3,6 +3,7 @@ import { dataHora, percentual, reais } from "@/lib/formato"
 import { CORES_STATUS, COR_TODOS } from "@/components/status-preco"
 import { cn } from "@/lib/utils"
 import { BotaoImprimir } from "@/components/botao-imprimir"
+import { SeloIndicador } from "@/components/indicador-preco"
 
 // Painel de CMV da casa: só exibe o que painel_cmv_casa / cmv_da_casa calcularam no banco
 export type LinhaCmv = {
@@ -32,11 +33,15 @@ export type ResultadoItem = {
   preco_ideal_arredondado: number | null; cmv_preco_ideal_pct: number | null; situacao: "ok" | "abaixo_do_alvo" | "prejuizo" | "sem_dados"
 }
 
+// Custo atual × custo pela média das últimas notas de cada insumo (custo_vs_media_casa, 0017)
+export type CustoMedia = { item_id: string; custo_media: number | null; variacao_pct: number | null; status: "subiu" | "caiu" | "estavel" | "sem_comparacao" }
+export const NOTAS_MEDIA = 10
+
 // Bloco do item no cardápio (seção como no cardápio impresso); ordem = posição no cardápio
 export type BlocoItem = { bloco: string; ordem: number }
 
 export function PainelCmv({
-  linhas, filtro, media, meta, metaDefinida, casa, formMeta, desativados = [], botaoItem, blocos, agrupado = false, moverItem, resultados, estrutura, bloco = "",
+  linhas, filtro, media, meta, metaDefinida, casa, formMeta, desativados = [], botaoItem, blocos, agrupado = false, moverItem, resultados, estrutura, bloco = "", medias,
 }: {
   linhas: LinhaCmv[]; filtro: string; media: number | null; meta: number; metaDefinida: boolean; casa: string
   formMeta?: React.ReactNode
@@ -52,6 +57,8 @@ export function PainelCmv({
   resultados?: Map<string, ResultadoItem>
   // quadro da estrutura de custos (abaixo dos indicadores)
   estrutura?: React.ReactNode
+  // variação do custo contra a média das últimas notas; sem a migração 0017, a coluna mostra só o custo
+  medias?: Map<string, CustoMedia>
   // seção aberta sozinha (vazio = todo o cardápio)
   bloco?: string
 }) {
@@ -85,13 +92,22 @@ export function PainelCmv({
   }
   const linha = (l: LinhaCmv) => {
     const acimaMeta = l.situacao === "acima_da_meta"
+    const m = medias?.get(l.item_id)
     return (
       <tr key={l.item_id} className="align-top break-inside-avoid">
         <td className="px-3 py-2 print:px-1.5 print:py-1">
           <Link href={`/fichas/${l.receita_id}`} className="font-medium hover:underline">{l.produto}</Link>
           {agrupado ? null : <div className="text-xs text-muted-foreground">{l.cardapio}</div>}
         </td>
-        <td className="whitespace-nowrap px-3 py-2 text-right print:px-1.5 print:py-1 tabular-nums">{l.custo_porcao != null ? reais(l.custo_porcao) : <span className="text-xs text-muted-foreground">falta preço de insumo</span>}</td>
+        <td className="whitespace-nowrap px-3 py-2 text-right print:px-1.5 print:py-1 tabular-nums">
+          {l.custo_porcao != null ? reais(l.custo_porcao) : <span className="text-xs text-muted-foreground">falta preço de insumo</span>}
+          {l.custo_porcao != null && m && m.status !== "sem_comparacao" ? (
+            <div className="mt-1">
+              <SeloIndicador status={m.status} pct={m.variacao_pct}
+                titulo={`Custo atual contra o custo pela média das últimas ${NOTAS_MEDIA} notas de cada insumo (${reais(m.custo_media)})`} />
+            </div>
+          ) : null}
+        </td>
         <td className="whitespace-nowrap px-3 py-2 text-right print:px-1.5 print:py-1 tabular-nums">{reais(l.preco_publicado)}</td>
         <td className="whitespace-nowrap px-3 py-2 text-right print:px-1.5 print:py-1">
           {l.cmv_atual_pct != null ? (
@@ -266,6 +282,7 @@ export function PainelCmv({
         </>
       )}
       <p className="text-xs text-muted-foreground">
+        {medias ? <>Abaixo do custo: variação contra o custo pela média das últimas {NOTAS_MEDIA} notas de cada insumo (vermelho = mais caro que a média, verde = mais barato). </> : null}
         Preço para a meta = custo ÷ meta da casa, arredondado pela regra da casa. &quot;Manter CMV do item&quot; usa o CMV que o item tinha
         quando o preço atual foi aprovado (itens de baixo CMV, como água, podem ficar abaixo da meta de propósito).
         Item desativado sai do painel e do CMV médio; o histórico de preços fica guardado e ele volta em “Desativados → Ativar”.
