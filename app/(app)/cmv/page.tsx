@@ -19,8 +19,8 @@ export default async function Cmv({ searchParams }: { searchParams: Promise<{ si
     supabase.rpc("painel_cmv_casa", { p_estab: s.casa.id }),
     supabase.rpc("cmv_da_casa", { p_estab: s.casa.id }),
     supabase.from("itens_cardapio")
-      .select("id, receita_id, nome_exibicao, receitas(nome), cardapios!inner(nome, estabelecimento_id, status)")
-      .eq("cardapios.estabelecimento_id", s.casa.id).neq("cardapios.status", "arquivado").eq("ativo", false),
+      .select("id, receita_id, nome_exibicao, receitas!inner(nome, ativo), cardapios!inner(nome, estabelecimento_id, status)")
+      .eq("cardapios.estabelecimento_id", s.casa.id).neq("cardapios.status", "arquivado").eq("ativo", false).eq("receitas.ativo", true),
     // seção e posição de cada item no cardápio, para o painel em blocos
     supabase.from("itens_cardapio").select("id, secao, ordem, cardapios!inner(nome, estabelecimento_id, status)")
       .eq("cardapios.estabelecimento_id", s.casa.id).neq("cardapios.status", "arquivado").eq("ativo", true),

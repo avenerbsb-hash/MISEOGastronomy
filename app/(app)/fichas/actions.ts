@@ -1,6 +1,7 @@
 "use server"
 
 import { revalidatePath } from "next/cache"
+import { redirect } from "next/navigation"
 import { z } from "zod"
 import { createClient } from "@/lib/supabase/server"
 import { exigirCustos } from "@/lib/sessao"
@@ -51,4 +52,33 @@ export async function definirPreco(receitaId: string, _: Estado, dados: FormData
   revalidatePath(`/fichas/${receitaId}`, "layout")
   revalidatePath("/fichas")
   return { ok: "Preço de venda atualizado." }
+}
+
+// Excluir ficha = tirar de uso sem apagar nada: a ficha sai das listas e dos cardápios de todas as casas,
+// mas versões aprovadas, preços e histórico continuam guardados (e ela pode ser restaurada).
+export async function excluirFicha(receitaId: string): Promise<Estado> {
+  const s = await exigirCustos()
+  if (!s.admin) return { erro: "Só o administrador pode excluir uma ficha técnica (ela vale para todas as casas)." }
+  const supabase = await createClient()
+  const { data, error } = await supabase.from("receitas").update({ ativo: false }).eq("id", receitaId).eq("tipo", "final").select("id")
+  if (error) return { erro: traduzirErro(error) }
+  if (!data?.length) return { erro: "Ficha não encontrada." }
+  const itens = await supabase.from("itens_cardapio").update({ ativo: false }).eq("receita_id", receitaId).eq("ativo", true)
+  if (itens.error) return { erro: traduzirErro(itens.error) }
+  revalidatePath("/fichas", "layout")
+  revalidatePath("/cmv")
+  redirect("/fichas")
+}
+
+// Volta a ficha para as listas. Os itens de cardápio continuam desativados: reative no Painel de CMV → Desativados.
+export async function restaurarFicha(receitaId: string): Promise<Estado> {
+  const s = await exigirCustos()
+  if (!s.admin) return { erro: "Só o administrador pode restaurar uma ficha técnica." }
+  const supabase = await createClient()
+  const { data, error } = await supabase.from("receitas").update({ ativo: true }).eq("id", receitaId).eq("tipo", "final").select("id")
+  if (error) return { erro: traduzirErro(error) }
+  if (!data?.length) return { erro: "Ficha não encontrada." }
+  revalidatePath("/fichas", "layout")
+  revalidatePath("/cmv")
+  return { ok: "Ficha restaurada. Para voltar ao cardápio, reative o item no Painel de CMV → Desativados." }
 }

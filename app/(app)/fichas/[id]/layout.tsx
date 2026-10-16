@@ -3,6 +3,8 @@ import { notFound } from "next/navigation"
 import { createClient } from "@/lib/supabase/server"
 import { exigirCasa, podeVerCustos } from "@/lib/sessao"
 import { Abas } from "@/components/abas"
+import { ExcluirFicha, FichaExcluida } from "@/components/excluir-ficha"
+import { excluirFicha, restaurarFicha } from "../actions"
 
 export default async function LayoutFicha({
   children, params,
@@ -10,7 +12,7 @@ export default async function LayoutFicha({
   const s = await exigirCasa()
   const { id } = await params
   const supabase = await createClient()
-  const { data: r } = await supabase.from("receitas").select("codigo, nome, tipo").eq("id", id).maybeSingle()
+  const { data: r } = await supabase.from("receitas").select("codigo, nome, tipo, ativo").eq("id", id).maybeSingle()
   if (!r || r.tipo !== "final") notFound()
 
   const abas = podeVerCustos(s)
@@ -25,8 +27,14 @@ export default async function LayoutFicha({
   return (
     <div>
       <div className="mb-2 text-sm"><Link href="/fichas" className="text-muted-foreground hover:underline">← Fichas</Link></div>
-      <h1 className="text-xl font-semibold">{r.nome}</h1>
-      <p className="mb-3 text-sm text-muted-foreground">{r.codigo}</p>
+      <div className="mb-3 flex flex-wrap items-start justify-between gap-2">
+        <div>
+          <h1 className="text-xl font-semibold">{r.nome}</h1>
+          <p className="text-sm text-muted-foreground">{r.codigo}</p>
+        </div>
+        {s.admin && r.ativo ? <ExcluirFicha acao={excluirFicha.bind(null, id)} nome={r.nome} /> : null}
+      </div>
+      {r.ativo ? null : <FichaExcluida acao={restaurarFicha.bind(null, id)} podeRestaurar={s.admin} />}
       <Abas itens={abas} />
       {children}
     </div>
