@@ -19,15 +19,22 @@ export const FILTROS_CMV = [
   { valor: "dentro_da_meta", rotulo: "Dentro da meta" },
   { valor: "sem_preco", rotulo: "Sem preço" },
   { valor: "sem_custo", rotulo: "Sem custo" },
+  { valor: "desativados", rotulo: "Desativados" },
 ] as const
 
+// Item desativado do cardápio (fora do painel e do CMV médio)
+export type ItemDesativado = { item_id: string; receita_id: string; produto: string; cardapio: string }
+
 export function PainelCmv({
-  linhas, filtro, media, meta, metaDefinida, casa, formMeta,
+  linhas, filtro, media, meta, metaDefinida, casa, formMeta, desativados = [], botaoItem,
 }: {
   linhas: LinhaCmv[]; filtro: string; media: number | null; meta: number; metaDefinida: boolean; casa: string
   formMeta?: React.ReactNode
+  desativados?: ItemDesativado[]
+  // botão Ativar/Desativar (formulário com a ação do servidor), montado pela página
+  botaoItem?: (itemId: string, ativar: boolean) => React.ReactNode
 }) {
-  const conta = (s: string) => linhas.filter((l) => !s || l.situacao === s).length
+  const conta = (s: string) => (s === "desativados" ? desativados.length : linhas.filter((l) => !s || l.situacao === s).length)
   const visiveis = linhas.filter((l) => !filtro || l.situacao === filtro)
   const acima = conta("acima_da_meta")
   return (
@@ -57,7 +64,8 @@ export function PainelCmv({
         {FILTROS_CMV.map((f) => {
           const ativo = filtro === f.valor
           const cor = f.valor === "acima_da_meta" ? CORES_STATUS.subiu : f.valor === "dentro_da_meta" ? CORES_STATUS.caiu
-            : f.valor === "sem_preco" ? CORES_STATUS.sem_preco : f.valor === "sem_custo" ? CORES_STATUS.sem_comparacao : null
+            : f.valor === "sem_preco" ? CORES_STATUS.sem_preco : f.valor === "sem_custo" ? CORES_STATUS.sem_comparacao
+            : f.valor === "desativados" ? CORES_STATUS.estavel : null
           return (
             <Link key={f.valor} href={f.valor ? `/cmv?situacao=${f.valor}` : "/cmv"} aria-current={ativo ? "page" : undefined}
               className={cn("rounded-full border px-3 py-1.5 text-sm", ativo && "border-transparent font-semibold")}
@@ -68,7 +76,23 @@ export function PainelCmv({
         })}
       </nav>
 
-      {visiveis.length === 0 ? (
+      {filtro === "desativados" ? (
+        desativados.length === 0 ? (
+          <p className="rounded-xl border p-6 text-center text-sm text-muted-foreground">Nenhum item desativado. Use “Desativar” na linha do item para tirá-lo do cardápio.</p>
+        ) : (
+          <ul className="divide-y rounded-xl border">
+            {desativados.map((d) => (
+              <li key={d.item_id} className="flex flex-wrap items-center justify-between gap-2 px-4 py-2.5">
+                <div className="min-w-0">
+                  <Link href={`/fichas/${d.receita_id}`} className="font-medium hover:underline">{d.produto}</Link>
+                  <div className="text-xs text-muted-foreground">{d.cardapio} · desativado</div>
+                </div>
+                {botaoItem?.(d.item_id, true)}
+              </li>
+            ))}
+          </ul>
+        )
+      ) : visiveis.length === 0 ? (
         <p className="rounded-xl border p-6 text-center text-sm text-muted-foreground">
           {linhas.length ? "Nenhum item nesta situação." : "Nenhum item no cardápio desta casa. Defina o preço de venda nas fichas para elas entrarem aqui."}
         </p>
@@ -126,9 +150,12 @@ export function PainelCmv({
                       ) : "—"}
                     </td>
                     <td className="whitespace-nowrap px-3 py-2 text-right">
-                      <Link href={`/fichas/${l.receita_id}/preco`} className="text-sm font-medium underline">
-                        {l.preco_publicado == null ? "Definir preço" : "Ajustar preço"}
-                      </Link>
+                      <div className="flex items-center justify-end gap-1">
+                        <Link href={`/fichas/${l.receita_id}/preco`} className="text-sm font-medium underline">
+                          {l.preco_publicado == null ? "Definir preço" : "Ajustar preço"}
+                        </Link>
+                        {botaoItem?.(l.item_id, false)}
+                      </div>
                     </td>
                   </tr>
                 )
@@ -140,6 +167,7 @@ export function PainelCmv({
       <p className="text-xs text-muted-foreground">
         Preço para a meta = custo ÷ meta da casa, arredondado pela regra da casa. &quot;Manter CMV do item&quot; usa o CMV que o item tinha
         quando o preço atual foi aprovado (itens de baixo CMV, como água, podem ficar abaixo da meta de propósito).
+        Item desativado sai do painel e do CMV médio; o histórico de preços fica guardado e ele volta em “Desativados → Ativar”.
       </p>
     </div>
   )

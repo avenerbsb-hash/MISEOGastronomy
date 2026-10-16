@@ -45,6 +45,9 @@ export async function definirPreco(receitaId: string, _: Estado, dados: FormData
 
   const { error } = await supabase.rpc("aprovar_preco", { p_item: itemId, p_preco: v.data.preco, p_motivo: v.data.motivo ?? null })
   if (error) return { erro: traduzirErro(error) }
+  // definir preço de um item desativado o devolve ao cardápio
+  await supabase.from("itens_cardapio").update({ ativo: true }).eq("id", itemId).eq("ativo", false)
+  revalidatePath("/cmv")
   revalidatePath(`/fichas/${receitaId}`, "layout")
   revalidatePath("/fichas")
   return { ok: "Preço de venda atualizado." }

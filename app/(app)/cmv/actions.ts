@@ -21,3 +21,15 @@ export async function definirMetaCmv(_: Estado, dados: FormData): Promise<Estado
   revalidatePath("/cmv")
   return { ok: "Meta atualizada." }
 }
+
+// Ativa ou desativa o item no cardápio da casa (sai do painel e do CMV médio; histórico de preços preservado)
+export async function alternarItemCardapio(itemId: string, ativo: boolean): Promise<Estado> {
+  await exigirCustos()
+  const supabase = await createClient()
+  const { data, error } = await supabase.from("itens_cardapio").update({ ativo }).eq("id", itemId).select("id")
+  if (error) return { erro: traduzirErro(error) }
+  if (!data?.length) return { erro: "Sem permissão para alterar este item." }
+  revalidatePath("/cmv")
+  revalidatePath("/fichas", "layout")
+  return { ok: ativo ? "Item ativado no cardápio." : "Item desativado do cardápio." }
+}
