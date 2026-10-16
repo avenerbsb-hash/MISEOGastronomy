@@ -10,9 +10,9 @@ import { Selecao } from "@/components/campos"
 
 export const metadata: Metadata = { title: "CMV" }
 
-export default async function Cmv({ searchParams }: { searchParams: Promise<{ situacao?: string; ver?: string }> }) {
+export default async function Cmv({ searchParams }: { searchParams: Promise<{ situacao?: string; ver?: string; bloco?: string }> }) {
   const s = await exigirCustos()
-  const { situacao = "", ver = "" } = await searchParams
+  const { situacao = "", ver = "", bloco = "" } = await searchParams
   const filtro = FILTROS_CMV.some((f) => f.valor === situacao) ? situacao : ""
   const supabase = await createClient()
   const [painel, casa, inativos, secoes, estrutura, resultado] = await Promise.all([
@@ -89,5 +89,5 @@ export default async function Cmv({ searchParams }: { searchParams: Promise<{ si
 
   return <PainelCmv linhas={linhas} filtro={filtro} media={media} meta={Number(meta)} metaDefinida={metaDefinida} casa={s.casa.nome} formMeta={formMeta}
     desativados={desativados} botaoItem={botaoItem} blocos={blocos} agrupado={ver !== "lista"} moverItem={moverItem}
-    resultados={resultados} estrutura={est ? <EstruturaCustos e={est} salvar={salvarEstrutura} restaurar={restaurarEstrutura} /> : null} />
+    bloco={bloco.slice(0, 120)} resultados={resultados} estrutura={est ? <EstruturaCustos e={est} salvar={salvarEstrutura} restaurar={restaurarEstrutura} /> : null} />
 }

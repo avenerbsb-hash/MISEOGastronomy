@@ -35,7 +35,7 @@ export type ResultadoItem = {
 export type BlocoItem = { bloco: string; ordem: number }
 
 export function PainelCmv({
-  linhas, filtro, media, meta, metaDefinida, casa, formMeta, desativados = [], botaoItem, blocos, agrupado = false, moverItem, resultados, estrutura,
+  linhas, filtro, media, meta, metaDefinida, casa, formMeta, desativados = [], botaoItem, blocos, agrupado = false, moverItem, resultados, estrutura, bloco = "",
 }: {
   linhas: LinhaCmv[]; filtro: string; media: number | null; meta: number; metaDefinida: boolean; casa: string
   formMeta?: React.ReactNode
@@ -51,16 +51,21 @@ export function PainelCmv({
   resultados?: Map<string, ResultadoItem>
   // quadro da estrutura de custos (abaixo dos indicadores)
   estrutura?: React.ReactNode
+  // seção aberta sozinha (vazio = todo o cardápio)
+  bloco?: string
 }) {
   const conta = (s: string) => (s === "desativados" ? desativados.length : linhas.filter((l) => !s || l.situacao === s).length)
   const visiveis = linhas.filter((l) => !filtro || l.situacao === filtro)
   const acima = conta("acima_da_meta")
-  const href = (mudar: { situacao?: string; ver?: string }) => {
+  const href = (mudar: { situacao?: string; ver?: string; bloco?: string }) => {
     const p = new URLSearchParams()
     const situacao = mudar.situacao ?? filtro
     const ver = mudar.ver ?? (agrupado ? "" : "lista")
+    // a lista única não separa por seção
+    const b = ver === "lista" ? "" : mudar.bloco ?? bloco
     if (situacao) p.set("situacao", situacao)
     if (ver) p.set("ver", ver)
+    if (b) p.set("bloco", b)
     const qs = p.toString()
     return qs ? `/cmv?${qs}` : "/cmv"
   }
@@ -200,14 +205,22 @@ export function PainelCmv({
         </p>
       ) : (
         <>
-        {agrupado && grupos.length > 1 ? (
+        {agrupado && grupos.length > 0 ? (
           <nav aria-label="Seções do cardápio" className="flex flex-wrap gap-1.5 text-xs">
+            <Link href={href({ bloco: "" })} aria-current={!bloco ? "page" : undefined}
+              className={cn("rounded-full border px-2.5 py-1 font-medium", !bloco ? "border-foreground bg-foreground text-background" : "hover:bg-muted")}>
+              Todo o cardápio <span className="tabular-nums opacity-70">{visiveis.length}</span>
+            </Link>
             {grupos.map((g) => (
-              <a key={g.nome} href={`#${ancora(g.nome)}`} className="rounded-full border px-2.5 py-1 text-muted-foreground hover:bg-muted hover:text-foreground">
+              <Link key={g.nome} href={href({ bloco: g.nome })} aria-current={bloco === g.nome ? "page" : undefined}
+                className={cn("rounded-full border px-2.5 py-1", bloco === g.nome ? "border-foreground bg-foreground text-background" : "text-muted-foreground hover:bg-muted hover:text-foreground")}>
                 {g.nome} <span className="tabular-nums opacity-70">{g.itens.length}</span>
-              </a>
+              </Link>
             ))}
           </nav>
+        ) : null}
+        {agrupado && bloco && !grupos.some((g) => g.nome === bloco) ? (
+          <p className="rounded-xl border p-6 text-center text-sm text-muted-foreground">Nenhum item de “{bloco}” nesta situação.</p>
         ) : null}
         <div className="overflow-x-auto rounded-xl border">
           <table className="w-full min-w-[56rem] text-sm">
@@ -223,7 +236,7 @@ export function PainelCmv({
                 <th className="px-3 py-2" />
               </tr>
             </thead>
-            {agrupado ? grupos.map((g) => (
+            {agrupado ? (bloco ? grupos.filter((g) => g.nome === bloco) : grupos).map((g) => (
               <tbody key={g.nome} className="divide-y border-t">
                 <tr id={ancora(g.nome)} className="scroll-mt-28 bg-muted/30">
                   <th colSpan={8} className="px-3 py-2 text-left text-sm font-semibold">
