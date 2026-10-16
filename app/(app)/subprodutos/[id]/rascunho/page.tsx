@@ -8,7 +8,8 @@ import { Campo, Entrada, Selecao, AreaTexto } from "@/components/campos"
 import { TabelaCustos, type LinhaGerencial } from "@/components/tabela-custos"
 import { agruparPorEtapa } from "@/components/ficha-producao"
 import { FormComponente, type Opcao } from "./form-componente"
-import { adicionarComponente, aprovarVersao, criarRascunho, removerComponente, renomearReceita, salvarRascunho } from "../../actions"
+import { EditarQuantidade } from "./editar-quantidade"
+import { adicionarComponente, alterarComponente, aprovarVersao, criarRascunho, removerComponente, renomearReceita, salvarRascunho } from "../../actions"
 
 type Componente = {
   id: string; ordem: number; etapa: string | null; quantidade: number; unidade: string; observacao: string | null
@@ -132,11 +133,12 @@ export default async function Rascunho({ params }: { params: Promise<{ id: strin
               <ul className="divide-y rounded-lg border">
                 {itens.map((c) => (
                   <li key={c.id} className="flex items-center justify-between gap-2 px-3 py-2 text-sm">
-                    <span>
+                    <div className="min-w-0">
                       {c.insumos?.nome ?? c.receitas?.nome}
                       {c.receitas ? <span className="text-xs text-muted-foreground"> (subproduto)</span> : null}
-                      <span className="block text-xs text-muted-foreground tabular-nums">{numero(c.quantidade)} {rotuloUnidade(c.unidade)}{c.observacao ? ` · ${c.observacao}` : ""}</span>
-                    </span>
+                      <EditarQuantidade acao={alterarComponente.bind(null, c.id, id)} quantidade={c.quantidade} unidade={c.unidade} />
+                      {c.observacao ? <span className="block text-xs text-muted-foreground">{c.observacao}</span> : null}
+                    </div>
                     <FormAcao acao={removerComponente.bind(null, c.id, id)}>
                       <BotaoEnviar variant="ghost" className="h-8 px-2 text-destructive">Remover</BotaoEnviar>
                     </FormAcao>

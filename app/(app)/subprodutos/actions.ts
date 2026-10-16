@@ -175,6 +175,22 @@ export async function adicionarComponente(versaoId: string, receitaId: string, _
   return { ok: "Componente adicionado." }
 }
 
+// Muda só a quantidade/unidade de um componente do rascunho (o banco recusa versão aprovada)
+const esquemaQuantidade = z.object({ quantidade: positivo("Informe a quantidade."), unidade })
+
+export async function alterarComponente(componenteId: string, receitaId: string, _: Estado, dados: FormData): Promise<Estado> {
+  await exigirCustos()
+  const v = esquemaQuantidade.safeParse({ quantidade: dados.get("quantidade"), unidade: dados.get("unidade") })
+  if (!v.success) return { erro: v.error.issues[0].message }
+  const supabase = await createClient()
+  const { data, error } = await supabase.from("componentes_receita")
+    .update({ quantidade: v.data.quantidade, unidade: v.data.unidade }).eq("id", componenteId).select("id")
+  if (error) return { erro: traduzirErro(error) }
+  if (!data?.length) return { erro: "Sem permissão para alterar este componente." }
+  revalidarReceita(receitaId)
+  return { ok: "Salvo." }
+}
+
 export async function removerComponente(componenteId: string, receitaId: string): Promise<Estado> {
   await exigirCustos()
   const supabase = await createClient()
