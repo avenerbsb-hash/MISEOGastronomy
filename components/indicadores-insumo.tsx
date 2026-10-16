@@ -4,11 +4,16 @@ import { CORES_STATUS } from "@/components/status-preco"
 import { SeloIndicador, pctPreciso, type StatusIndicador } from "@/components/indicador-preco"
 
 // Detalhe do insumo: indicadores A, B e C e o histórico mensal (valores de indicadores_insumos e
-// historico_mensal_insumo; aqui só se exibe)
+// historico_mensal_insumo; acumulado do ano de acumulado_anual_insumo; aqui só se exibe)
 export type LinhaMensal = {
   mes: string; mes_encerrado: boolean; compras: number; quantidade_base: number; custo_medio: number
   menor_custo: number; maior_custo: number; volatilidade_pct: number | null; fornecedores: number
   variacao_mensal_pct: number | null; status_mensal: "subiu" | "caiu" | "estavel" | "sem_base"
+}
+// Acumulado do ano (0015): mês × primeiro mês com compra do mesmo ano
+export type LinhaAcumulado = {
+  mes: string; mes_base: string; media_base: number; custo_medio: number
+  acumulado_pct: number | null; status_acumulado: "subiu" | "caiu" | "estavel" | "sem_base"
 }
 
 const mesCurto = (iso: string) => {
@@ -21,13 +26,19 @@ const mesAnterior = (iso: string) => {
   return `${Math.floor(t / 12)}-${String((t % 12) + 1).padStart(2, "0")}-01`
 }
 
-export function IndicadoresInsumo({ ind, historico, dim }: { ind: IndicadorInsumo | undefined; historico: LinhaMensal[]; dim: Dimensao }) {
+export function IndicadoresInsumo({ ind, historico, acumulado, dim }: {
+  ind: IndicadorInsumo | undefined; historico: LinhaMensal[]; acumulado: LinhaAcumulado[] | null; dim: Dimensao
+}) {
   const valor = (v: number | null | undefined) => (v == null ? "—" : custoPorUnidade(v, dim))
   const doMes = ind ? historico.find((h) => h.mes === ind.mes) : undefined
   const mes = ind?.mes ?? ""
+  const ano = mes.slice(0, 4)
+  // último mês com compra até o mês escolhido, no mesmo ano
+  const acumMes = acumulado?.filter((a) => a.mes.slice(0, 4) === ano && a.mes <= mes).at(-1)
+  const acumPorMes = new Map((acumulado ?? []).map((a) => [a.mes, a]))
   return (
     <div className="grid gap-4">
-      <div className="grid gap-3 sm:grid-cols-3">
+      <div className={`grid gap-3 ${acumulado ? "sm:grid-cols-2 xl:grid-cols-4" : "sm:grid-cols-3"}`}>
         <Bloco titulo="Variação da última compra">
           <SeloIndicador status={ind?.status_ultima ?? "sem_preco"} pct={ind?.variacao_ultima_pct} />
           <p className="text-xs text-muted-foreground">
@@ -51,36 +62,50 @@ export function IndicadoresInsumo({ ind, historico, dim }: { ind: IndicadorInsum
               : "Precisa de pelo menos 2 compras no mês"}
           </p>
         </Bloco>
+        {acumulado ? (
+          <Bloco titulo={`Acumulado em ${ano}`}>
+            {acumMes && acumMes.status_acumulado !== "sem_base"
+              ? <SeloIndicador status={acumMes.status_acumulado} pct={acumMes.acumulado_pct} titulo={`Variação acumulada desde ${nomeMes(acumMes.mes_base)}`} />
+              : <SeloIndicador status="sem_base" titulo="Precisa de compras em pelo menos 2 meses do ano" />}
+            <p className="text-xs text-muted-foreground">
+              {acumMes && acumMes.status_acumulado !== "sem_base"
+                ? <>{nomeMes(acumMes.mes_base)}: {valor(acumMes.media_base)} → {nomeMes(acumMes.mes)}: {valor(acumMes.custo_medio)}</>
+                : acumMes ? `${nomeMes(acumMes.mes)} é o primeiro mês com compra em ${ano}` : `Sem compras em ${ano} até ${nomeMes(mes)}`}
+            </p>
+          </Bloco>
+        ) : null}
       </div>
 
       {historico.length >= 2 ? <GraficoMensal linhas={historico} dim={dim} /> : null}
 
       {historico.length ? (
         <div className="overflow-x-auto rounded-lg border">
-          <table className="w-full min-w-[40rem] text-sm">
+          <table className={`w-full ${acumulado ? "min-w-[44rem]" : "min-w-[40rem]"} text-sm`}>
             <thead className="bg-muted/50 text-left text-xs text-muted-foreground">
               <tr>
-                <th className="px-3 py-1.5">Mês</th>
-                <th className="px-3 py-1.5 text-right">Compras</th>
-                <th className="px-3 py-1.5 text-right">Preço médio</th>
-                <th className="px-3 py-1.5 text-right">Menor</th>
-                <th className="px-3 py-1.5 text-right">Maior</th>
-                <th className="px-3 py-1.5 text-right">Volatilidade</th>
-                <th className="px-3 py-1.5 text-right">Fornecedores</th>
-                <th className="px-3 py-1.5 text-right">Tendência</th>
+                <th className="px-2 py-1.5">Mês</th>
+                <th className="px-2 py-1.5 text-right">Compras</th>
+                <th className="px-2 py-1.5 text-right">Preço médio</th>
+                <th className="px-2 py-1.5 text-right">Menor</th>
+                <th className="px-2 py-1.5 text-right">Maior</th>
+                <th className="px-2 py-1.5 text-right">Volatilidade</th>
+                <th className="px-2 py-1.5 text-right" title="Fornecedores">Fornec.</th>
+                <th className="px-2 py-1.5 text-right">Tendência</th>
+                {acumulado ? <th className="px-2 py-1.5 text-right" title="Preço médio do mês contra o primeiro mês com compra do mesmo ano">No ano</th> : null}
               </tr>
             </thead>
             <tbody className="divide-y">
               {[...historico].reverse().map((h) => (
                 <tr key={h.mes}>
-                  <td className="whitespace-nowrap px-3 py-1.5">{nomeMes(h.mes)}{h.mes_encerrado ? "" : <span className="text-xs text-muted-foreground"> · em andamento</span>}</td>
-                  <td className="px-3 py-1.5 text-right tabular-nums">{h.compras}</td>
-                  <td className="whitespace-nowrap px-3 py-1.5 text-right font-medium tabular-nums">{valor(h.custo_medio)}</td>
-                  <td className="whitespace-nowrap px-3 py-1.5 text-right tabular-nums text-muted-foreground">{valor(h.menor_custo)}</td>
-                  <td className="whitespace-nowrap px-3 py-1.5 text-right tabular-nums text-muted-foreground">{valor(h.maior_custo)}</td>
-                  <td className="whitespace-nowrap px-3 py-1.5 text-right tabular-nums">{h.volatilidade_pct != null ? pctPreciso(h.volatilidade_pct, false) : <span className="text-xs text-muted-foreground">indisponível</span>}</td>
-                  <td className="px-3 py-1.5 text-right tabular-nums">{h.fornecedores}</td>
-                  <td className="whitespace-nowrap px-3 py-1.5 text-right"><SeloIndicador status={h.status_mensal} pct={h.variacao_mensal_pct} /></td>
+                  <td className="whitespace-nowrap px-2 py-1.5">{nomeMes(h.mes)}{h.mes_encerrado ? "" : <span className="text-xs text-muted-foreground"> · em andamento</span>}</td>
+                  <td className="px-2 py-1.5 text-right tabular-nums">{h.compras}</td>
+                  <td className="whitespace-nowrap px-2 py-1.5 text-right font-medium tabular-nums">{valor(h.custo_medio)}</td>
+                  <td className="whitespace-nowrap px-2 py-1.5 text-right tabular-nums text-muted-foreground">{valor(h.menor_custo)}</td>
+                  <td className="whitespace-nowrap px-2 py-1.5 text-right tabular-nums text-muted-foreground">{valor(h.maior_custo)}</td>
+                  <td className="whitespace-nowrap px-2 py-1.5 text-right tabular-nums">{h.volatilidade_pct != null ? pctPreciso(h.volatilidade_pct, false) : <span className="text-xs text-muted-foreground">indisponível</span>}</td>
+                  <td className="px-2 py-1.5 text-right tabular-nums">{h.fornecedores}</td>
+                  <td className="whitespace-nowrap px-2 py-1.5 text-right"><SeloIndicador status={h.status_mensal} pct={h.variacao_mensal_pct} /></td>
+                  {acumulado ? <CelulaAcumulado a={acumPorMes.get(h.mes)} /> : null}
                 </tr>
               ))}
             </tbody>
@@ -90,6 +115,16 @@ export function IndicadoresInsumo({ ind, historico, dim }: { ind: IndicadorInsum
         <p className="text-sm text-muted-foreground">Ainda não há compras validadas deste insumo nesta casa para o histórico mensal.</p>
       )}
     </div>
+  )
+}
+
+function CelulaAcumulado({ a }: { a: LinhaAcumulado | undefined }) {
+  return (
+    <td className="whitespace-nowrap px-2 py-1.5 text-right">
+      {!a ? <span className="text-xs text-muted-foreground">—</span>
+        : a.status_acumulado === "sem_base" ? <span className="text-xs text-muted-foreground">base de {a.mes.slice(0, 4)}</span>
+        : <SeloIndicador status={a.status_acumulado} pct={a.acumulado_pct} titulo={`Desde ${nomeMes(a.mes_base)}`} />}
+    </td>
   )
 }
 

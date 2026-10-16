@@ -2,7 +2,7 @@ import Link from "next/link"
 import { createClient } from "@/lib/supabase/server"
 import { exigirCustos } from "@/lib/sessao"
 import { indicadoresDaCasa, mesDoParametro, variacoesDaCasa } from "@/lib/dados"
-import { IndicadoresInsumo, type LinhaMensal } from "@/components/indicadores-insumo"
+import { IndicadoresInsumo, type LinhaMensal, type LinhaAcumulado } from "@/components/indicadores-insumo"
 import { custoPorUnidade, dataCurta, hojeSP, numero, reais, rotuloUnidade, ultimosMeses, UNIDADES_POR_DIMENSAO, type Dimensao } from "@/lib/formato"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { BadgeVariacao, Variacao } from "@/components/variacao"
@@ -26,7 +26,7 @@ export default async function ResumoInsumo({ params, searchParams }: { params: P
   const mesISO = mesDoParametro((await searchParams).mes)
   const supabase = await createClient()
 
-  const [{ data: insumo }, variacoes, medir, fornecedores, pendentes, impactadas, ranking, indicadores, mensal] = await Promise.all([
+  const [{ data: insumo }, variacoes, medir, fornecedores, pendentes, impactadas, ranking, indicadores, mensal, acumulado] = await Promise.all([
     supabase.from("insumos").select("nome, dimensao").eq("id", id).single(),
     variacoesDaCasa(s.casa.id),
     supabase.from("alias_insumo").select("descricao_original").eq("insumo_id", id).eq("medir_no_recebimento", true),
@@ -42,6 +42,8 @@ export default async function ResumoInsumo({ params, searchParams }: { params: P
     // indicadores A/B/C e histórico mensal (0012); sem a migração o card não aparece
     indicadoresDaCasa(s.casa.id, mesISO),
     supabase.rpc("historico_mensal_insumo", { p_insumo: id, p_estab: s.casa.id, p_meses: 12 }),
+    // acumulado do ano (0015); sem a migração, o card do acumulado não aparece
+    supabase.rpc("acumulado_anual_insumo", { p_insumo: id, p_estab: s.casa.id, p_meses: 12 }),
   ])
   if (!insumo) return null
   const dim = insumo.dimensao as Dimensao
@@ -71,7 +73,8 @@ export default async function ResumoInsumo({ params, searchParams }: { params: P
             </form>
           </CardHeader>
           <CardContent>
-            <IndicadoresInsumo ind={indicadores.get(id)} historico={(mensal.data ?? []) as LinhaMensal[]} dim={dim} />
+            <IndicadoresInsumo ind={indicadores.get(id)} historico={(mensal.data ?? []) as LinhaMensal[]}
+              acumulado={acumulado.error ? null : (acumulado.data ?? []) as LinhaAcumulado[]} dim={dim} />
           </CardContent>
         </Card>
       ) : null}
