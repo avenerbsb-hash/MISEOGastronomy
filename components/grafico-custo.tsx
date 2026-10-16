@@ -38,7 +38,7 @@ export function GraficoCusto({ linhas, dimensao, pontos = 10 }: { linhas: LinhaH
       <figcaption className="text-xs text-muted-foreground">
         Oscilação do custo — {serie.length === linhas.length ? "todas as alterações" : `últimas ${serie.length} alterações`}
       </figcaption>
-      <svg viewBox={`0 0 ${W} ${H}`} className="h-auto w-full text-foreground" role="img"
+      <svg viewBox={`0 0 ${W} ${H}`} className="h-auto w-full max-w-3xl text-foreground" role="img"
         aria-label={`Custo de ${valor(vs[0])} em ${dataCurta(serie[0].data)} a ${valor(vs[ultimo])} em ${dataCurta(serie[ultimo].data)}`}>
         {grade.map((g) => (
           <g key={g}>

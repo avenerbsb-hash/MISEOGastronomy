@@ -10,6 +10,7 @@ import { precosDasFichas } from "../dados"
 import { historicoCusto, variacoesDasReceitas, variacoesDosComponentes } from "@/lib/dados"
 import { Variacao } from "@/components/variacao"
 import { HistoricoCusto } from "@/components/historico-custo"
+import { AvisoRascunho } from "@/components/aviso-rascunho"
 
 export default async function FichaFinal({ params }: { params: Promise<{ id: string }> }) {
   const s = await exigirCasa()
@@ -38,6 +39,7 @@ export default async function FichaFinal({ params }: { params: Promise<{ id: str
 
   return (
     <div className="grid gap-4">
+      <AvisoRascunho receitaId={id} href={`/fichas/${id}/editar`} />
       <Card>
         <CardHeader>
           <CardTitle>Custo em {s.casa.nome}</CardTitle>
