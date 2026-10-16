@@ -17,10 +17,12 @@ export default async function PrecoVenda({ params }: { params: Promise<{ id: str
   const { id } = await params
   const supabase = await createClient()
 
-  const [{ data: itens }, { data: painel }, custo] = await Promise.all([
+  const [{ data: itens }, { data: painel }, custo, { data: painelCasa }] = await Promise.all([
     supabase.from("itens_cardapio").select("id, cardapios!inner(estabelecimento_id)").eq("receita_id", id).eq("cardapios.estabelecimento_id", s.casa.id),
     supabase.rpc("painel_cmv", { p_estab: s.casa.id }),
     supabase.rpc("custo_receita", { p_receita: id, p_estab: s.casa.id }),
+    // meta da casa (0011)
+    supabase.rpc("painel_cmv_casa", { p_estab: s.casa.id }),
   ])
   const idsItens = new Set((itens ?? []).map((i) => i.id as string))
   const linha = ((painel ?? []) as LinhaPainel[]).find((l) => idsItens.has(l.item_id))
@@ -35,6 +37,10 @@ export default async function PrecoVenda({ params }: { params: Promise<{ id: str
   const sugestoes: Sugestao[] = []
   if (linha?.preco_sugerido_arredondado) {
     sugestoes.push({ rotulo: "Manter CMV do item", detalhe: `CMV de referência ${percentual(linha.cmv_alvo_pct)}`, valor: Number(linha.preco_sugerido_arredondado) })
+  }
+  const meta = ((painelCasa ?? []) as { item_id: string; preco_meta: number | null; meta_pct: number }[]).find((l) => l.item_id === linha?.item_id)
+  if (meta?.preco_meta) {
+    sugestoes.push({ rotulo: "Atingir a meta da casa", detalhe: `CMV de ${percentual(meta.meta_pct)}`, valor: Number(meta.preco_meta) })
   }
   if (linha?.preco_sugerido_margem_arredondado) {
     sugestoes.push({ rotulo: "Manter margem em R$", detalhe: `margem de referência ${reais(linha.margem_referencia)}`, valor: Number(linha.preco_sugerido_margem_arredondado) })

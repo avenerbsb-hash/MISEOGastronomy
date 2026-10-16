@@ -23,6 +23,7 @@ $P -d aceite -f testes/80_variacao_fichas.sql 2>&1 | filtro
 $P -d aceite -f testes/90_alertas_aumento.sql 2>&1 | filtro
 $P -d aceite -f testes/95_impacto_insumo.sql 2>&1 | filtro
 $P -d aceite -f testes/97_fornecedores_insumo.sql 2>&1 | filtro
+$P -d aceite -f testes/98_painel_cmv_casa.sql 2>&1 | filtro
 $P -d seed -f supabase/seed/01_insumos_giuli.sql 2>&1 | filtro
 $P -d seed -f testes/20_seed_giuli.sql 2>&1 | filtro
 $P -d seed -f supabase/seed/03_categorias.sql >/dev/null
