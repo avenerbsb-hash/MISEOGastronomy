@@ -6,6 +6,8 @@ import { custoPorUnidade, NOME_DIMENSAO, type Dimensao } from "@/lib/formato"
 import { buttonVariants } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { BuscaLista } from "@/components/busca-lista"
+import { variacoesDasReceitas } from "@/lib/dados"
+import { BadgeVariacao } from "@/components/variacao"
 
 export const metadata: Metadata = { title: "Subprodutos" }
 
@@ -31,6 +33,7 @@ export default async function Subprodutos({ searchParams }: { searchParams: Prom
 
   // Produção não busca custo nenhum
   const custoPorReceita = new Map<string, number | null>()
+  const variacoes = custos ? await variacoesDasReceitas(s.casa.id, "subproduto") : new Map()
   if (custos) {
     const resultados = await Promise.all(
       receitas.map((r) => supabase.rpc("custo_receita", { p_receita: r.id, p_estab: s.casa.id })),
@@ -74,10 +77,11 @@ export default async function Subprodutos({ searchParams }: { searchParams: Prom
                     </div>
                   </div>
                   {custos ? (
-                    <span className="font-medium tabular-nums">
+                    <span className="inline-flex items-center gap-2 font-medium tabular-nums">
                       {custoPorReceita.get(r.id) != null
                         ? custoPorUnidade(custoPorReceita.get(r.id), r.dimensao_saida)
                         : <span className="text-sm font-normal text-muted-foreground">{vigente ? "Falta preço de insumo" : "—"}</span>}
+                      {variacoes.get(r.id) ? <BadgeVariacao sinal={variacoes.get(r.id)!.sinal} pct={variacoes.get(r.id)!.variacao_pct} /> : null}
                     </span>
                   ) : null}
                 </Link>

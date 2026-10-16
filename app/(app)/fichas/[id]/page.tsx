@@ -7,6 +7,9 @@ import { TabelaCustos, type LinhaGerencial } from "@/components/tabela-custos"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { cn } from "@/lib/utils"
 import { precosDasFichas } from "../dados"
+import { historicoCusto, variacoesDasReceitas, variacoesDosComponentes } from "@/lib/dados"
+import { Variacao } from "@/components/variacao"
+import { HistoricoCusto } from "@/components/historico-custo"
 
 export default async function FichaFinal({ params }: { params: Promise<{ id: string }> }) {
   const s = await exigirCasa()
@@ -21,11 +24,15 @@ export default async function FichaFinal({ params }: { params: Promise<{ id: str
     return <p className="text-sm text-muted-foreground">Esta ficha ainda não tem versão aprovada. <Link href={`/fichas/${id}/editar`} className="underline">Abrir o rascunho</Link>.</p>
   }
 
-  const [custo, gerencial, precos] = await Promise.all([
+  const [custo, gerencial, precos, variacoes, historico, componentes] = await Promise.all([
     supabase.rpc("custo_receita", { p_receita: id, p_estab: s.casa.id }),
     supabase.rpc("ficha_gerencial", { p_receita: id, p_estab: s.casa.id }),
     precosDasFichas(s.casa.id),
+    variacoesDasReceitas(s.casa.id, "final"),
+    historicoCusto(id, s.casa.id),
+    variacoesDosComponentes(s.casa.id),
   ])
+  const v = variacoes.get(id)
   const p = precos.get(id)
   const linhas = (gerencial.data ?? []) as LinhaGerencial[]
 
@@ -43,6 +50,7 @@ export default async function FichaFinal({ params }: { params: Promise<{ id: str
               <div className="text-3xl font-semibold tabular-nums">
                 {custo.data != null ? reais(custo.data as number) : <span className="text-base font-normal text-muted-foreground">Falta preço de algum insumo</span>}
               </div>
+              {v ? <div className="mt-1"><Variacao sinal={v.sinal} pct={v.variacao_pct} data={v.data_referencia} casa={s.casa.nome} /></div> : null}
             </div>
             {p?.preco != null ? (
               <>
@@ -55,9 +63,10 @@ export default async function FichaFinal({ params }: { params: Promise<{ id: str
               </>
             ) : <Link href={`/fichas/${id}/preco`} className="text-sm underline">Definir preço de venda nesta casa</Link>}
           </div>
-          <TabelaCustos linhas={linhas} />
+          <TabelaCustos linhas={linhas} variacoes={componentes} />
         </CardContent>
       </Card>
+      <HistoricoCusto linhas={historico} dimensao="contagem" casa={s.casa.nome} />
       <FichaProducao linhas={linhasProducao} />
     </div>
   )

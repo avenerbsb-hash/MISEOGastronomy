@@ -19,6 +19,7 @@ $P -d aceite -f testes/10_casos_de_aceite.sql 2>&1 | filtro
 $P -d aceite -f testes/40_cmv_referencia.sql 2>&1 | filtro
 $P -d aceite -f testes/50_correcoes_0005.sql 2>&1 | filtro
 $P -d aceite -f testes/60_correcoes_0006.sql 2>&1 | filtro
+$P -d aceite -f testes/80_variacao_fichas.sql 2>&1 | filtro
 $P -d seed -f supabase/seed/01_insumos_giuli.sql 2>&1 | filtro
 $P -d seed -f testes/20_seed_giuli.sql 2>&1 | filtro
 $P -d seed -f supabase/seed/03_categorias.sql >/dev/null

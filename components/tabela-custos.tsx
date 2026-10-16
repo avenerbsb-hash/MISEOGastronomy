@@ -1,5 +1,6 @@
 import { custoPorUnidade, numero, percentual, reais, rotuloUnidade } from "@/lib/formato"
 import { agruparPorEtapa } from "@/components/ficha-producao"
+import { BadgeVariacao } from "@/components/variacao"
 
 // Linha devolvida por ficha_gerencial (custos calculados pelo banco)
 export type LinhaGerencial = {
@@ -18,7 +19,11 @@ export type LinhaGerencial = {
   participacao_pct: number | null
 }
 
-export function TabelaCustos({ linhas, rodape }: { linhas: LinhaGerencial[]; rodape?: React.ReactNode }) {
+// variacoes (opcional): variação de preço de cada componente, na chave "insumo:Nome" / "subproduto:Nome"
+export function TabelaCustos({ linhas, rodape, variacoes }: {
+  linhas: LinhaGerencial[]; rodape?: React.ReactNode; variacoes?: Map<string, { sinal: string; pct: number | null }>
+}) {
+  const colunas = variacoes ? 6 : 5
   if (!linhas.length) return <p className="text-sm text-muted-foreground">Nenhum componente ainda.</p>
   return (
     <div className="overflow-x-auto rounded-xl border">
@@ -30,11 +35,12 @@ export function TabelaCustos({ linhas, rodape }: { linhas: LinhaGerencial[]; rod
             <th className="px-3 py-2 text-right">Custo unitário</th>
             <th className="px-3 py-2 text-right">Custo</th>
             <th className="px-3 py-2 text-right">%</th>
+            {variacoes ? <th className="px-3 py-2 text-right">Variação</th> : null}
           </tr>
         </thead>
         {agruparPorEtapa(linhas).map(([etapa, itens]) => (
           <tbody key={etapa} className="divide-y border-t">
-            <tr><td colSpan={5} className="bg-muted/30 px-3 py-1.5 text-xs font-semibold capitalize">{etapa}</td></tr>
+            <tr><td colSpan={colunas} className="bg-muted/30 px-3 py-1.5 text-xs font-semibold capitalize">{etapa}</td></tr>
             {itens.map((l) => (
               <tr key={`${l.ordem}-${l.componente}`}>
                 <td className="px-3 py-2">{l.componente}{l.tipo === "subproduto" ? <span className="text-xs text-muted-foreground"> (subproduto)</span> : null}</td>
@@ -44,6 +50,14 @@ export function TabelaCustos({ linhas, rodape }: { linhas: LinhaGerencial[]; rod
                 </td>
                 <td className="whitespace-nowrap px-3 py-2 text-right tabular-nums">{l.custo == null ? "—" : reais(l.custo)}</td>
                 <td className="whitespace-nowrap px-3 py-2 text-right tabular-nums text-muted-foreground">{percentual(l.participacao_pct)}</td>
+                {variacoes ? (
+                  <td className="whitespace-nowrap px-3 py-2 text-right">
+                    {(() => {
+                      const v = variacoes.get(`${l.tipo}:${l.componente}`)
+                      return v ? <BadgeVariacao sinal={v.sinal} pct={v.pct} /> : <span className="text-xs text-muted-foreground">—</span>
+                    })()}
+                  </td>
+                ) : null}
               </tr>
             ))}
           </tbody>

@@ -8,6 +8,8 @@ import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
 import { precosDasFichas } from "./dados"
 import { BuscaLista } from "@/components/busca-lista"
+import { variacoesDasReceitas } from "@/lib/dados"
+import { BadgeVariacao } from "@/components/variacao"
 
 export const metadata: Metadata = { title: "Fichas" }
 
@@ -35,7 +37,9 @@ export default async function Fichas({ searchParams }: { searchParams: Promise<{
   const receitas = (data ?? []) as Receita[]
 
   // Produção não busca custo nem preço
-  const precos = custos ? await precosDasFichas(s.casa.id) : new Map()
+  const [precos, variacoes] = custos
+    ? await Promise.all([precosDasFichas(s.casa.id), variacoesDasReceitas(s.casa.id, "final")])
+    : [new Map(), new Map()]
   const custoSemCardapio = new Map<string, number | null>()
   if (custos) {
     const fora = receitas.filter((r) => !precos.has(r.id))
@@ -86,8 +90,9 @@ export default async function Fichas({ searchParams }: { searchParams: Promise<{
                   </div>
                   {custos ? (
                     <div className="grid gap-0.5 text-sm tabular-nums sm:justify-items-end">
-                      <span>
+                      <span className="inline-flex flex-wrap items-center gap-x-1.5 sm:justify-end">
                         Custo <b>{custo != null ? reais(custo) : "—"}</b>
+                        {variacoes.get(r.id) ? <BadgeVariacao sinal={variacoes.get(r.id)!.sinal} pct={variacoes.get(r.id)!.variacao_pct} /> : null}
                         {p?.preco != null ? <> · Preço <b>{reais(p.preco)}</b></> : null}
                       </span>
                       {p?.cmv != null ? (
