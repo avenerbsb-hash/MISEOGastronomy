@@ -1,17 +1,29 @@
 import { obterSessao, podeVerCustos } from "@/lib/sessao"
+import { createClient } from "@/lib/supabase/server"
 import { SeletorCasa } from "@/components/seletor-casa"
 import { Menu } from "@/components/menu"
 import { sair } from "./actions"
 
 export default async function LayoutApp({ children }: { children: React.ReactNode }) {
   const s = await obterSessao()
-  const itens = podeVerCustos(s)
+  const custos = podeVerCustos(s)
+  // compras esperando conferência na casa (número no menu)
+  let conferir = 0
+  if (custos && s.casa) {
+    const supabase = await createClient()
+    const { count } = await supabase.from("conferencias_preco").select("id", { count: "exact", head: true })
+      .eq("estabelecimento_id", s.casa.id).eq("status", "aberta")
+    conferir = count ?? 0
+  }
+  // ordem do dia a dia: resumo, cardápio e fichas, depois cadastro e compras
+  const itens = custos
     ? [
-        { href: "/insumos", rotulo: "Insumos" },
-        { href: "/pendencias", rotulo: "Compras" },
-        { href: "/subprodutos", rotulo: "Subprodutos" },
-        { href: "/fichas", rotulo: "Fichas" },
+        { href: "/inicio", rotulo: "Início" },
         { href: "/cmv", rotulo: "CMV" },
+        { href: "/fichas", rotulo: "Fichas" },
+        { href: "/subprodutos", rotulo: "Subprodutos" },
+        { href: "/insumos", rotulo: "Insumos" },
+        { href: "/pendencias", rotulo: "Compras", contador: conferir },
         { href: "/alertas", rotulo: "Alertas" },
       ]
     : [{ href: "/subprodutos", rotulo: "Subprodutos" }, { href: "/fichas", rotulo: "Fichas" }]

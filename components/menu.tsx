@@ -4,7 +4,7 @@ import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
 
-export function Menu({ itens }: { itens: { href: string; rotulo: string }[] }) {
+export function Menu({ itens }: { itens: { href: string; rotulo: string; contador?: number }[] }) {
   const atual = usePathname()
   return (
     <nav aria-label="Menu principal" className="flex gap-1 overflow-x-auto">
@@ -21,6 +21,10 @@ export function Menu({ itens }: { itens: { href: string; rotulo: string }[] }) {
             )}
           >
             {i.rotulo}
+            {i.contador ? (
+              <span className="ml-1.5 rounded-full bg-[#DC2626] px-1.5 py-0.5 text-[11px] font-semibold tabular-nums text-white"
+                title={`${i.contador} para conferir`}>{i.contador}</span>
+            ) : null}
           </Link>
         )
       })}
