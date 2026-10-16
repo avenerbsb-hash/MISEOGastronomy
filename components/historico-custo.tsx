@@ -2,6 +2,7 @@ import { custoPorUnidade, dataCurta, reais, type Dimensao } from "@/lib/formato"
 import type { LinhaHistoricoCusto } from "@/lib/dados"
 import { BadgeVariacao } from "@/components/variacao"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { GraficoCusto } from "@/components/grafico-custo"
 
 // Histórico de custo da ficha (mais recente primeiro), calculado pelo banco com a receita atual
 export function HistoricoCusto({ linhas, dimensao, casa }: { linhas: LinhaHistoricoCusto[]; dimensao: Dimensao; casa: string }) {
@@ -14,10 +15,15 @@ export function HistoricoCusto({ linhas, dimensao, casa }: { linhas: LinhaHistor
           Cada data em que uma compra mudou o custo desta ficha em {casa} (com a receita atual).
         </CardDescription>
       </CardHeader>
-      <CardContent>
+      <CardContent className="grid gap-4">
+        <GraficoCusto linhas={linhas} dimensao={dimensao} />
         {linhas.length === 0 ? (
           <p className="text-sm text-muted-foreground">Ainda não há compras registradas dos insumos desta ficha nesta casa.</p>
         ) : (
+          <details open={linhas.length <= 10} className="group">
+            <summary className="mb-2 cursor-pointer text-sm text-muted-foreground hover:underline">
+              {linhas.length <= 10 ? "Alterações" : `Ver todas as alterações (${linhas.length})`}
+            </summary>
           <div className="overflow-x-auto rounded-xl border">
             <table className="w-full text-sm">
               <thead className="bg-muted/50 text-left text-xs text-muted-foreground">
@@ -44,6 +50,7 @@ export function HistoricoCusto({ linhas, dimensao, casa }: { linhas: LinhaHistor
               </tbody>
             </table>
           </div>
+          </details>
         )}
       </CardContent>
     </Card>
