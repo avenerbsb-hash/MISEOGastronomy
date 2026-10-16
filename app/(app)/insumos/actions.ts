@@ -219,3 +219,40 @@ export async function validarPreco(registroId: string, _: Estado, dados: FormDat
   revalidatePath("/pendencias")
   return { ok: aprovar ? "Preço validado." : "Preço rejeitado." }
 }
+
+// ------------------------------------------------------------------ estorno de compra validada (0016)
+const esquemaEstorno = z.object({
+  motivo: z.string().trim().min(3, "Escreva o motivo do estorno.").max(300),
+  todas: z.literal("sim").optional(),
+})
+const esquemaCorrecaoEstorno = z.object({
+  quantidade: decimal.pipe(z.number().positive("Informe a quantidade certa.")),
+  unidade: z.enum(["mg", "g", "kg", "ml", "l", "un"], { message: "Escolha a unidade." }),
+  valor: decimal.pipe(z.number().positive("Informe o valor certo.")),
+})
+
+// Estorna (e, se informado, corrige) uma compra já validada. Nada é apagado: a compra vira "rejeitada".
+export async function estornarCompra(registroId: string, insumoId: string, _: Estado, dados: FormData): Promise<Estado> {
+  const s = await exigirCustos()
+  if (!s.admin) return { erro: "Só o administrador pode estornar uma compra validada." }
+  const v = esquemaEstorno.safeParse({ motivo: dados.get("motivo"), todas: dados.get("todas") ?? undefined })
+  if (!v.success) return { erro: v.error.issues[0].message }
+  let c: z.infer<typeof esquemaCorrecaoEstorno> | null = null
+  if (String(dados.get("quantidade") ?? "").trim() || String(dados.get("valor") ?? "").trim()) {
+    const r = esquemaCorrecaoEstorno.safeParse({ quantidade: dados.get("quantidade"), unidade: dados.get("unidade"), valor: dados.get("valor") })
+    if (!r.success) return { erro: r.error.issues[0].message }
+    c = r.data
+  }
+  const supabase = await createClient()
+  const { data, error } = await supabase.rpc("estornar_compra", {
+    p_registro: registroId, p_motivo: v.data.motivo, p_todas_casas: v.data.todas === "sim",
+    p_quantidade: c?.quantidade ?? null, p_unidade: c?.unidade ?? null, p_valor: c?.valor ?? null,
+  })
+  if (error) return { erro: traduzirErro(error) }
+  revalidatePath(`/insumos/${insumoId}`, "layout")
+  revalidatePath("/insumos")
+  revalidatePath("/fichas", "layout")
+  revalidatePath("/cmv")
+  const n = Number(data ?? 0)
+  return { ok: `${n} ${n === 1 ? "compra estornada" : "compras estornadas"}${c ? " e corrigida" + (n === 1 ? "" : "s") : ""}. O custo já foi recalculado.` }
+}

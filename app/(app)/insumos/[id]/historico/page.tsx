@@ -1,6 +1,8 @@
 import { createClient } from "@/lib/supabase/server"
 import { exigirCustos } from "@/lib/sessao"
-import { custoPorUnidade, dataCurta, dataHora, numero, reais, rotuloUnidade } from "@/lib/formato"
+import { custoPorUnidade, dataCurta, dataHora, numero, reais, rotuloUnidade, UNIDADES_POR_DIMENSAO, type Dimensao } from "@/lib/formato"
+import { EstornarCompra } from "@/components/estornar-compra"
+import { estornarCompra } from "../../actions"
 import { Badge } from "@/components/ui/badge"
 
 type Linha = {
@@ -27,7 +29,7 @@ export default async function HistoricoInsumo({ params }: { params: Promise<{ id
       .order("data_compra", { ascending: false }).order("criado_em", { ascending: false }),
   ])
   const linhas = (data ?? []) as unknown as Linha[]
-  const dim = insumo?.dimensao ?? "massa"
+  const dim = (insumo?.dimensao ?? "massa") as Dimensao
 
   if (error) return <p className="text-sm text-destructive">Não foi possível carregar o histórico.</p>
   if (!linhas.length) return <p className="text-sm text-muted-foreground">Nenhuma compra registrada em {s.casa.nome}.</p>
@@ -35,7 +37,7 @@ export default async function HistoricoInsumo({ params }: { params: Promise<{ id
   return (
     <div className="grid gap-2">
       <p className="text-sm text-muted-foreground">
-        {linhas.length} registros em {s.casa.nome}. O histórico não se edita: para corrigir, registre uma nova compra.
+        {linhas.length} registros em {s.casa.nome}. O histórico não se edita nem se apaga.{s.admin ? " Compra validada com erro: use Estornar (ela fica guardada como rejeitada)." : " Para corrigir, registre uma nova compra."}
       </p>
       <div className="overflow-x-auto rounded-xl border">
         <table className="w-full text-sm">
@@ -63,6 +65,9 @@ export default async function HistoricoInsumo({ params }: { params: Promise<{ id
                     {l.status === "validado" ? "Validado" : l.status === "pendente" ? "Pendente" : "Rejeitado"}
                   </Badge>
                   {l.validado_em ? <div className="mt-0.5 text-xs text-muted-foreground no-underline">{dataHora(l.validado_em)}</div> : null}
+                  {s.admin && l.status === "validado" ? (
+                    <EstornarCompra acao={estornarCompra.bind(null, l.id, id)} unidades={UNIDADES_POR_DIMENSAO[dim]} quantidade={Number(l.quantidade)} unidade={l.unidade} />
+                  ) : null}
                 </td>
                 <td className="px-3 py-2 text-xs text-muted-foreground">
                   {FONTE[l.fonte] ?? l.fonte}{l.documento_ref ? ` · NF ${l.documento_ref}` : ""}
