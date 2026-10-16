@@ -22,10 +22,27 @@ type Receita = {
 // CMV acima disto aparece em vermelho
 const CMV_ALERTA = 30
 
-export default async function Fichas({ searchParams }: { searchParams: Promise<{ ordem?: string; q?: string }> }) {
+// Filtro por tipo, pela categoria da ficha (Fichas finais › …)
+const GRUPOS = [
+  { valor: "", rotulo: "Todas" },
+  { valor: "drinks", rotulo: "Drinks" },
+  { valor: "comida", rotulo: "Comida" },
+  { valor: "bebidas", rotulo: "Bebidas" },
+  { valor: "outros", rotulo: "Outros" },
+] as const
+const COMIDA = new Set(["Entradas", "Saladas", "Petiscos e porções", "Pratos principais", "Massas", "Risotos", "Pizzas", "Sanduíches e burgers",
+  "Sushi, sashimi e temaki", "Pratos quentes orientais", "Acompanhamentos", "Sobremesas", "Menu infantil"])
+const BEBIDAS = new Set(["Doses e garrafas", "Cafés e bebidas quentes"])
+function grupoDa(categoria: string | undefined): string {
+  const c = categoria?.split(" › ").at(-1) ?? ""
+  return c.startsWith("Drinks") ? "drinks" : COMIDA.has(c) ? "comida" : BEBIDAS.has(c) ? "bebidas" : "outros"
+}
+
+export default async function Fichas({ searchParams }: { searchParams: Promise<{ ordem?: string; q?: string; tipo?: string }> }) {
   const s = await exigirCasa()
   const custos = podeVerCustos(s)
-  const { ordem, q = "" } = await searchParams
+  const { ordem, q = "", tipo: tipoBruto = "" } = await searchParams
+  const tipo = GRUPOS.some((g) => g.valor === tipoBruto) ? tipoBruto : ""
   const termo = q.trim().replace(/[%,()]/g, " ")
   const supabase = await createClient()
   const [{ data }, cats] = await Promise.all([
@@ -35,7 +52,21 @@ export default async function Fichas({ searchParams }: { searchParams: Promise<{
     categorias("receita"),
   ])
   const nomes = nomesCategorias(cats)
-  const receitas = (data ?? []) as Receita[]
+  const todas = (data ?? []) as Receita[]
+  const grupo = new Map(todas.map((r) => [r.id, grupoDa(r.categoria_id ? nomes.get(r.categoria_id) : undefined)]))
+  const conta = (g: string) => (g ? todas.filter((r) => grupo.get(r.id) === g).length : todas.length)
+  const receitas = tipo ? todas.filter((r) => grupo.get(r.id) === tipo) : todas
+  // links que mantêm busca, ordem e tipo
+  const href = (mudar: { ordem?: string; tipo?: string }) => {
+    const p = new URLSearchParams()
+    const o = mudar.ordem ?? (ordem === "cmv" ? "cmv" : "")
+    const tp = mudar.tipo ?? tipo
+    if (o) p.set("ordem", o)
+    if (q) p.set("q", q)
+    if (tp) p.set("tipo", tp)
+    const qs = p.toString()
+    return qs ? `/fichas?${qs}` : "/fichas"
+  }
 
   // Produção não busca custo nem preço
   const [precos, variacoes] = custos
@@ -62,18 +93,27 @@ export default async function Fichas({ searchParams }: { searchParams: Promise<{
         </div>
         {custos ? (
           <nav className="flex gap-1.5 text-sm" aria-label="Ordenar">
-            <Link href={q ? `/fichas?q=${encodeURIComponent(q)}` : "/fichas"} className={cn("rounded-full border px-3 py-1.5", ordem !== "cmv" && "border-foreground bg-foreground text-background")}>Nome (A–Z)</Link>
-            <Link href={`/fichas?ordem=cmv${q ? `&q=${encodeURIComponent(q)}` : ""}`} className={cn("rounded-full border px-3 py-1.5", ordem === "cmv" && "border-foreground bg-foreground text-background")}>Maior CMV primeiro</Link>
+            <Link href={href({ ordem: "" })} className={cn("rounded-full border px-3 py-1.5", ordem !== "cmv" && "border-foreground bg-foreground text-background")}>Nome (A–Z)</Link>
+            <Link href={href({ ordem: "cmv" })} className={cn("rounded-full border px-3 py-1.5", ordem === "cmv" && "border-foreground bg-foreground text-background")}>Maior CMV primeiro</Link>
           </nav>
         ) : null}
       </div>
 
       <AvisoAlertas quantidade={[...variacoes.values()].filter(emAlerta).length} um="ficha técnica subiu" varios="fichas técnicas subiram" ancora="fichas" />
 
-      <BuscaLista q={q} placeholder="Buscar ficha por nome ou código" manter={ordem === "cmv" ? { ordem: "cmv" } : undefined} />
+      <BuscaLista q={q} placeholder="Buscar ficha por nome ou código" manter={ordem === "cmv" || tipo ? { ...(ordem === "cmv" ? { ordem: "cmv" } : {}), ...(tipo ? { tipo } : {}) } : undefined} />
+
+      <nav aria-label="Filtrar por tipo" className="flex flex-wrap gap-1.5 text-sm">
+        {GRUPOS.map((g) => (
+          <Link key={g.valor} href={href({ tipo: g.valor })} aria-current={tipo === g.valor ? "page" : undefined}
+            className={cn("rounded-full border px-3 py-1.5", tipo === g.valor ? "border-foreground bg-foreground text-background" : "hover:bg-muted")}>
+            {g.rotulo} <span className="tabular-nums opacity-70">{conta(g.valor)}</span>
+          </Link>
+        ))}
+      </nav>
 
       {receitas.length === 0 ? (
-        <p className="rounded-xl border p-6 text-center text-sm text-muted-foreground">{q ? "Nenhuma ficha encontrada." : "Nenhuma ficha cadastrada."}</p>
+        <p className="rounded-xl border p-6 text-center text-sm text-muted-foreground">{q || tipo ? "Nenhuma ficha encontrada." : "Nenhuma ficha cadastrada."}</p>
       ) : (
         <ul className="divide-y rounded-xl border">
           {receitas.map((r) => {
