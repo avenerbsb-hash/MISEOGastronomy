@@ -4,7 +4,8 @@ import { exigirCustos } from "@/lib/sessao"
 import { PainelCmv, FILTROS_CMV, type BlocoItem, type ItemDesativado, type LinhaCmv } from "@/components/painel-cmv"
 import { FormAcao, BotaoEnviar } from "@/components/form-acao"
 import { Entrada } from "@/components/campos"
-import { alternarItemCardapio, definirMetaCmv } from "./actions"
+import { alternarItemCardapio, definirMetaCmv, moverItemSecao } from "./actions"
+import { Selecao } from "@/components/campos"
 
 export const metadata: Metadata = { title: "CMV" }
 
@@ -39,6 +40,24 @@ export default async function Cmv({ searchParams }: { searchParams: Promise<{ si
     const rank = i.secao ? RANK[i.cardapios.nome] ?? 2 : 9
     blocos.set(i.id, { bloco: i.secao ?? `${i.cardapios.nome} · sem seção`, ordem: rank * 100000 + (i.ordem ?? 0) })
   }
+  // seções existentes (na ordem do cardápio) e a seção atual de cada item
+  const secaoDoItem = new Map<string, string | null>()
+  for (const i of (secoes.data ?? []) as unknown as { id: string; secao: string | null }[]) secaoDoItem.set(i.id, i.secao)
+  const listaSecoes = [...new Map([...blocos.entries()].filter(([id]) => secaoDoItem.get(id)).map(([id, b]) => [b.bloco, b.ordem])).entries()]
+    .sort((a, b) => a[1] - b[1]).map(([nome]) => nome)
+  const moverItem = (itemId: string) => (
+    <details className="mt-1 text-right text-xs">
+      <summary className="cursor-pointer text-muted-foreground hover:underline">Mover de seção</summary>
+      <FormAcao acao={moverItemSecao.bind(null, itemId)} limparAoSalvar={false} className="mt-1 justify-items-end gap-1.5">
+        <Selecao name="secao" defaultValue={secaoDoItem.get(itemId) ?? ""} aria-label="Seção" className="h-8 w-56 text-xs">
+          <option value="">Escolha a seção…</option>
+          {listaSecoes.map((n) => <option key={n} value={n}>{n}</option>)}
+        </Selecao>
+        <Entrada name="nova" maxLength={80} placeholder="ou nome de seção nova" aria-label="Seção nova" className="h-8 w-56 text-xs" />
+        <BotaoEnviar variant="outline" className="h-8 px-3 text-xs" enviando="Movendo…">Mover</BotaoEnviar>
+      </FormAcao>
+    </details>
+  )
   const botaoItem = (itemId: string, ativar: boolean) => (
     <FormAcao acao={alternarItemCardapio.bind(null, itemId, ativar)} className="gap-1">
       <BotaoEnviar variant={ativar ? "outline" : "ghost"} enviando={ativar ? "Ativando…" : "Desativando…"}
@@ -62,5 +81,5 @@ export default async function Cmv({ searchParams }: { searchParams: Promise<{ si
   ) : null
 
   return <PainelCmv linhas={linhas} filtro={filtro} media={media} meta={Number(meta)} metaDefinida={metaDefinida} casa={s.casa.nome} formMeta={formMeta}
-    desativados={desativados} botaoItem={botaoItem} blocos={blocos} agrupado={ver !== "lista"} />
+    desativados={desativados} botaoItem={botaoItem} blocos={blocos} agrupado={ver !== "lista"} moverItem={moverItem} />
 }

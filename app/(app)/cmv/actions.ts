@@ -33,3 +33,38 @@ export async function alternarItemCardapio(itemId: string, ativo: boolean): Prom
   revalidatePath("/fichas", "layout")
   return { ok: ativo ? "Item ativado no cardápio." : "Item desativado do cardápio." }
 }
+
+// Move o item para outra seção do cardápio da casa (ou para uma seção nova).
+// Seção que já existe em outro cardápio da casa (ex.: "Drinks - Autorais" no cardápio Drinks): o item vai junto
+// para esse cardápio e entra no fim da seção. Histórico de preços preservado (o item é o mesmo).
+export async function moverItemSecao(itemId: string, _: Estado, dados: FormData): Promise<Estado> {
+  const s = await exigirCustos()
+  const nova = String(dados.get("nova") ?? "").trim()
+  const escolhida = String(dados.get("secao") ?? "").trim()
+  const secao = (nova || escolhida).slice(0, 80)
+  if (!secao) return { erro: "Escolha a seção ou escreva o nome de uma seção nova." }
+  const supabase = await createClient()
+
+  const { data: item } = await supabase.from("itens_cardapio").select("id, cardapio_id, secao").eq("id", itemId).maybeSingle()
+  if (!item) return { erro: "Item não encontrado." }
+  if (item.secao === secao) return { ok: "O item já está nesta seção." }
+
+  // cardápio onde a seção já existe (na mesma casa) e a última posição dela
+  const { data: naSecao } = await supabase.from("itens_cardapio")
+    .select("cardapio_id, ordem, cardapios!inner(estabelecimento_id)")
+    .eq("cardapios.estabelecimento_id", s.casa.id).eq("secao", secao)
+    .order("ordem", { ascending: false }).limit(1)
+  const destino = naSecao?.[0] as { cardapio_id: string; ordem: number } | undefined
+  const mudanca: { secao: string; cardapio_id?: string; ordem?: number } = { secao }
+  if (destino) {
+    mudanca.ordem = (destino.ordem ?? 0) + 1
+    if (destino.cardapio_id !== item.cardapio_id) mudanca.cardapio_id = destino.cardapio_id
+  }
+  let { data, error } = await supabase.from("itens_cardapio").update(mudanca).eq("id", itemId).select("id")
+  // a mesma ficha já está no cardápio de destino: muda só a seção
+  if (error?.code === "23505") ({ data, error } = await supabase.from("itens_cardapio").update({ secao, ordem: mudanca.ordem }).eq("id", itemId).select("id"))
+  if (error) return { erro: traduzirErro(error) }
+  if (!data?.length) return { erro: "Sem permissão para alterar este item." }
+  revalidatePath("/cmv")
+  return { ok: `Movido para “${secao}”.` }
+}

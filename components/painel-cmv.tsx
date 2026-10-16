@@ -29,7 +29,7 @@ export type ItemDesativado = { item_id: string; receita_id: string; produto: str
 export type BlocoItem = { bloco: string; ordem: number }
 
 export function PainelCmv({
-  linhas, filtro, media, meta, metaDefinida, casa, formMeta, desativados = [], botaoItem, blocos, agrupado = false,
+  linhas, filtro, media, meta, metaDefinida, casa, formMeta, desativados = [], botaoItem, blocos, agrupado = false, moverItem,
 }: {
   linhas: LinhaCmv[]; filtro: string; media: number | null; meta: number; metaDefinida: boolean; casa: string
   formMeta?: React.ReactNode
@@ -39,6 +39,8 @@ export function PainelCmv({
   // seção de cada item (item_id → bloco); com "agrupado", a tabela sai em blocos como no cardápio
   blocos?: Map<string, BlocoItem>
   agrupado?: boolean
+  // controle "Mover" (trocar a seção do item), montado pela página
+  moverItem?: (itemId: string) => React.ReactNode
 }) {
   const conta = (s: string) => (s === "desativados" ? desativados.length : linhas.filter((l) => !s || l.situacao === s).length)
   const visiveis = linhas.filter((l) => !filtro || l.situacao === filtro)
@@ -109,6 +111,7 @@ export function PainelCmv({
             </Link>
             {botaoItem?.(l.item_id, false)}
           </div>
+          {moverItem?.(l.item_id)}
         </td>
       </tr>
     )
