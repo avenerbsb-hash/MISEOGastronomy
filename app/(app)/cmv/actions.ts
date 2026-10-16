@@ -68,3 +68,36 @@ export async function moverItemSecao(itemId: string, _: Estado, dados: FormData)
   revalidatePath("/cmv")
   return { ok: `Movido para “${secao}”.` }
 }
+
+// Estrutura de custos & taxas da casa (% sobre o preço). Total precisa ficar abaixo de 100%.
+const CAMPOS_ESTRUTURA = ["impostos_pct", "cartao_pct", "gorjeta_pct", "ifood_pct", "comissoes_pct", "outras_pct",
+  "despesas_fixas_pct", "despesa_financeira_pct", "investimento_lucro_pct"] as const
+const pctCampo = decimal.pipe(z.number().min(0, "Percentual não pode ser negativo.").max(99, "Percentual muito alto."))
+
+export async function salvarEstrutura(_: Estado, dados: FormData): Promise<Estado> {
+  const s = await exigirCustos()
+  const valores: Record<string, number> = {}
+  for (const c of CAMPOS_ESTRUTURA) {
+    const v = pctCampo.safeParse(dados.get(c) || "0")
+    if (!v.success) return { erro: v.error.issues[0].message }
+    valores[c] = v.data
+  }
+  if (Object.values(valores).reduce((t, v) => t + v, 0) >= 100) return { erro: "A soma das deduções precisa ficar abaixo de 100%." }
+  const supabase = await createClient()
+  const { error } = await supabase.from("estrutura_custos_casa")
+    .upsert({ estabelecimento_id: s.casa.id, ...valores, atualizado_em: new Date().toISOString() }, { onConflict: "estabelecimento_id" })
+  if (error) return { erro: traduzirErro(error) }
+  revalidatePath("/cmv")
+  revalidatePath("/fichas", "layout")
+  return { ok: "Estrutura de custos salva." }
+}
+
+export async function restaurarEstrutura(): Promise<Estado> {
+  const s = await exigirCustos()
+  const supabase = await createClient()
+  const { error } = await supabase.from("estrutura_custos_casa").delete().eq("estabelecimento_id", s.casa.id)
+  if (error) return { erro: traduzirErro(error) }
+  revalidatePath("/cmv")
+  revalidatePath("/fichas", "layout")
+  return { ok: "Padrão da planilha restaurado." }
+}

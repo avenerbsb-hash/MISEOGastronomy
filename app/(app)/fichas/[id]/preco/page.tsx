@@ -4,6 +4,7 @@ import { dataHora, percentual, reais } from "@/lib/formato"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { definirPreco } from "../../actions"
 import { FormPreco, type Sugestao } from "./form-preco"
+import { Demonstrativo, type LinhaDemonstrativo } from "@/components/demonstrativo"
 
 type LinhaPainel = {
   item_id: string; cardapio: string; custo_porcao: number | null; preco_publicado: number | null; cmv_atual_pct: number | null
@@ -17,12 +18,14 @@ export default async function PrecoVenda({ params }: { params: Promise<{ id: str
   const { id } = await params
   const supabase = await createClient()
 
-  const [{ data: itens }, { data: painel }, custo, { data: painelCasa }] = await Promise.all([
+  const [{ data: itens }, { data: painel }, custo, { data: painelCasa }, { data: resultados }] = await Promise.all([
     supabase.from("itens_cardapio").select("id, cardapios!inner(estabelecimento_id)").eq("receita_id", id).eq("cardapios.estabelecimento_id", s.casa.id),
     supabase.rpc("painel_cmv", { p_estab: s.casa.id }),
     supabase.rpc("custo_receita", { p_receita: id, p_estab: s.casa.id }),
     // meta da casa (0011)
     supabase.rpc("painel_cmv_casa", { p_estab: s.casa.id }),
+    // estrutura de custos (0013)
+    supabase.rpc("resultado_itens_casa", { p_estab: s.casa.id }),
   ])
   const idsItens = new Set((itens ?? []).map((i) => i.id as string))
   const linha = ((painel ?? []) as LinhaPainel[]).find((l) => idsItens.has(l.item_id))
@@ -32,6 +35,8 @@ export default async function PrecoVenda({ params }: { params: Promise<{ id: str
         .eq("item_id", linha.item_id).order("vigente_desde", { ascending: false })
     : { data: [] }
   const historico = (hist ?? []) as Historico[]
+  const { data: demo } = linha ? await supabase.rpc("demonstrativo_item", { p_item: linha.item_id }) : { data: null }
+  const demonstrativo = (demo ?? []) as LinhaDemonstrativo[]
   const custoAtual = (custo.data as number | null) ?? null
 
   const sugestoes: Sugestao[] = []
@@ -41,6 +46,10 @@ export default async function PrecoVenda({ params }: { params: Promise<{ id: str
   const meta = ((painelCasa ?? []) as { item_id: string; preco_meta: number | null; meta_pct: number }[]).find((l) => l.item_id === linha?.item_id)
   if (meta?.preco_meta) {
     sugestoes.push({ rotulo: "Atingir a meta da casa", detalhe: `CMV de ${percentual(meta.meta_pct)}`, valor: Number(meta.preco_meta) })
+  }
+  const res = ((resultados ?? []) as { item_id: string; preco_ideal_arredondado: number | null; lucro_alvo_pct: number }[]).find((r) => r.item_id === linha?.item_id)
+  if (res?.preco_ideal_arredondado) {
+    sugestoes.push({ rotulo: "Preço ideal (estrutura de custos)", detalhe: `cobre taxas e despesas e sobra ${percentual(res.lucro_alvo_pct)}`, valor: Number(res.preco_ideal_arredondado) })
   }
   if (linha?.preco_sugerido_margem_arredondado) {
     sugestoes.push({ rotulo: "Manter margem em R$", detalhe: `margem de referência ${reais(linha.margem_referencia)}`, valor: Number(linha.preco_sugerido_margem_arredondado) })
@@ -60,6 +69,16 @@ export default async function PrecoVenda({ params }: { params: Promise<{ id: str
           <div><div className="text-xs text-muted-foreground">Margem</div><div className="text-xl tabular-nums">{reais(linha?.margem_atual)}</div></div>
         </CardContent>
       </Card>
+
+      {demonstrativo.length ? (
+        <Card className="lg:row-span-2">
+          <CardHeader>
+            <CardTitle>Resultado na ponta</CardTitle>
+            <CardDescription>Do preço atual ao que sobra, com a estrutura de custos & taxas de {s.casa.nome} (painel de CMV).</CardDescription>
+          </CardHeader>
+          <CardContent><Demonstrativo linhas={demonstrativo} /></CardContent>
+        </Card>
+      ) : null}
 
       <Card>
         <CardHeader>

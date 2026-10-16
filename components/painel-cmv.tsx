@@ -25,11 +25,17 @@ export const FILTROS_CMV = [
 // Item desativado do cardápio (fora do painel e do CMV médio)
 export type ItemDesativado = { item_id: string; receita_id: string; produto: string; cardapio: string }
 
+// Resultado na ponta do item (resultado_itens_casa, 0013)
+export type ResultadoItem = {
+  item_id: string; resultado: number | null; resultado_pct: number | null; lucro_alvo_pct: number
+  preco_ideal_arredondado: number | null; cmv_preco_ideal_pct: number | null; situacao: "ok" | "abaixo_do_alvo" | "prejuizo" | "sem_dados"
+}
+
 // Bloco do item no cardápio (seção como no cardápio impresso); ordem = posição no cardápio
 export type BlocoItem = { bloco: string; ordem: number }
 
 export function PainelCmv({
-  linhas, filtro, media, meta, metaDefinida, casa, formMeta, desativados = [], botaoItem, blocos, agrupado = false, moverItem,
+  linhas, filtro, media, meta, metaDefinida, casa, formMeta, desativados = [], botaoItem, blocos, agrupado = false, moverItem, resultados, estrutura,
 }: {
   linhas: LinhaCmv[]; filtro: string; media: number | null; meta: number; metaDefinida: boolean; casa: string
   formMeta?: React.ReactNode
@@ -41,6 +47,10 @@ export function PainelCmv({
   agrupado?: boolean
   // controle "Mover" (trocar a seção do item), montado pela página
   moverItem?: (itemId: string) => React.ReactNode
+  // resultado na ponta por item; sem a migração 0013, a coluna mostra a margem bruta
+  resultados?: Map<string, ResultadoItem>
+  // quadro da estrutura de custos (abaixo dos indicadores)
+  estrutura?: React.ReactNode
 }) {
   const conta = (s: string) => (s === "desativados" ? desativados.length : linhas.filter((l) => !s || l.situacao === s).length)
   const visiveis = linhas.filter((l) => !filtro || l.situacao === filtro)
@@ -85,7 +95,9 @@ export function PainelCmv({
             </span>
           ) : "—"}
         </td>
-        <td className="whitespace-nowrap px-3 py-2 text-right tabular-nums">{reais(l.margem_atual)}</td>
+        <td className="whitespace-nowrap px-3 py-2 text-right tabular-nums">
+          {resultados ? <Resultado r={resultados.get(l.item_id)} /> : reais(l.margem_atual)}
+        </td>
         <td className="whitespace-nowrap px-3 py-2 text-right tabular-nums">
           {l.preco_meta != null ? (
             <>
@@ -148,6 +160,8 @@ export function PainelCmv({
         </Link>
       </div>
 
+      {estrutura}
+
       <nav aria-label="Filtrar por situação" className="flex flex-wrap gap-1.5">
         {FILTROS_CMV.map((f) => {
           const ativo = filtro === f.valor
@@ -203,7 +217,7 @@ export function PainelCmv({
                 <th className="px-3 py-2 text-right">Custo</th>
                 <th className="px-3 py-2 text-right">Preço</th>
                 <th className="px-3 py-2 text-right">CMV</th>
-                <th className="px-3 py-2 text-right">Margem</th>
+                <th className="px-3 py-2 text-right" title="Preço − CMV − impostos e taxas − despesas fixas e financeira">{resultados ? "Resultado na ponta" : "Margem"}</th>
                 <th className="px-3 py-2 text-right">Preço para a meta</th>
                 <th className="px-3 py-2 text-right">Manter CMV do item</th>
                 <th className="px-3 py-2" />
@@ -235,5 +249,24 @@ export function PainelCmv({
         Item desativado sai do painel e do CMV médio; o histórico de preços fica guardado e ele volta em “Desativados → Ativar”.
       </p>
     </div>
+  )
+}
+
+const COR_RESULTADO = { ok: CORES_STATUS.caiu, abaixo_do_alvo: CORES_STATUS.sem_comparacao, prejuizo: CORES_STATUS.subiu, sem_dados: CORES_STATUS.estavel }
+function Resultado({ r }: { r: ResultadoItem | undefined }) {
+  if (!r || r.situacao === "sem_dados" || r.resultado == null) return <>—</>
+  const cor = COR_RESULTADO[r.situacao]
+  return (
+    <>
+      <span className="font-medium" style={{ color: cor.texto }}>{reais(r.resultado)}</span>
+      <span className="ml-1 rounded-full px-1.5 py-0.5 text-[11px] font-semibold" style={{ color: cor.texto, backgroundColor: cor.fundo }}>
+        {percentual(r.resultado_pct)}
+      </span>
+      {r.preco_ideal_arredondado != null && r.situacao !== "ok" ? (
+        <div className="text-xs text-muted-foreground" title={`Preço em que sobra ${percentual(r.lucro_alvo_pct)} de investimento / lucro`}>
+          ideal {reais(r.preco_ideal_arredondado)}
+        </div>
+      ) : null}
+    </>
   )
 }
