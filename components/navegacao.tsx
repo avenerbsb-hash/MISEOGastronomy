@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { createPortal } from "react-dom"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import {
@@ -83,7 +84,7 @@ export function MenuCelular({ itens }: { itens: ItemMenu[] }) {
         <IconeMenu className="size-5" aria-hidden /> Menu
         {pendentes ? <span className="absolute right-0.5 top-1 size-2.5 rounded-full bg-alta" aria-label={`${pendentes} pendências`} /> : null}
       </button>
-      {aberto ? (
+      {aberto ? createPortal(
         <div className="fixed inset-0 z-50" role="dialog" aria-modal="true" aria-label="Menu">
           <button type="button" aria-label="Fechar menu" onClick={() => setAberto(false)} className="absolute inset-0 bg-black/40" />
           <div id="menu-celular" className="absolute inset-y-0 left-0 flex w-72 max-w-[85vw] flex-col gap-3 bg-background p-3 shadow-xl"
@@ -95,7 +96,8 @@ export function MenuCelular({ itens }: { itens: ItemMenu[] }) {
             </div>
             <Itens itens={itens} recolhido={false} aoEscolher={() => setAberto(false)} />
           </div>
-        </div>
+        </div>,
+        document.body,
       ) : null}
     </div>
   )

@@ -38,8 +38,8 @@ export default async function PaginaInsumos({ searchParams }: { searchParams: Pr
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h1 className="text-xl font-semibold">Insumos</h1>
         <div className="flex flex-wrap gap-2">
-          <Link href={link("/insumos/relatorio")} className={buttonVariants({ variant: "outline", className: "h-11 px-4" })}>PDF</Link>
-          <Link href="/pendencias/notas" className={buttonVariants({ variant: "outline", className: "h-11 px-4" })}>Importar nota</Link>
+          <Link href={link("/insumos/relatorio")} className={buttonVariants({ variant: "outline", className: "hidden h-11 px-4 sm:inline-flex" })}>PDF</Link>
+          <Link href="/pendencias/notas" className={buttonVariants({ variant: "outline", className: "hidden h-11 px-4 sm:inline-flex" })}>Importar nota</Link>
           <Link href="/insumos/novo" className={buttonVariants({ className: "h-11 px-4" })}>Novo insumo</Link>
         </div>
       </div>
@@ -51,11 +51,11 @@ export default async function PaginaInsumos({ searchParams }: { searchParams: Pr
           <Entrada name="q" defaultValue={q} placeholder="Buscar insumo por nome ou código" aria-label="Buscar insumo" className="h-11 flex-1 text-base" />
           <Button type="submit" className="h-11 px-4">Buscar</Button>
         </div>
-        <details className="group rounded-xl border px-3 py-1.5" open={filtrosAtivos > 0 || undefined}>
+        <details className="group rounded-xl border px-3 py-1.5">
           <summary className="flex min-h-11 cursor-pointer list-none items-center gap-2 text-sm font-medium">
             <SlidersHorizontal className="size-4" aria-hidden /> Filtros
             {filtrosAtivos ? <span className="rounded-full bg-foreground px-1.5 text-xs text-background">{filtrosAtivos}</span> : null}
-            <span className="ml-auto text-xs font-normal text-muted-foreground group-open:hidden">categoria, ordem, mês, uso</span>
+            <span className="ml-auto truncate text-xs font-normal text-muted-foreground group-open:hidden">{filtrosAtivos ? [uso ? "só usados em fichas" : "", categoria ? nomes.get(categoria) : "", ordem !== "nome" ? ORDENS[ordem] : "", mes ? `mês ${mes}` : ""].filter(Boolean).join(" · ") : "categoria, ordem, mês, uso"}</span>
           </summary>
           <div className="grid gap-2 pb-2 pt-1 sm:grid-cols-2 lg:grid-cols-4">
             <Selecao name="categoria" defaultValue={categoria} aria-label="Categoria" className="h-11">
