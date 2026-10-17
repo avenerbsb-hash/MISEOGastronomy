@@ -5,6 +5,8 @@ import { exigirProducao, podeVerCustos } from "@/lib/sessao"
 import { categorias, nomesCategorias } from "@/lib/dados"
 import { percentual, reais } from "@/lib/formato"
 import { Badge } from "@/components/ui/badge"
+import { buttonVariants } from "@/components/ui/button"
+import { FileDown } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { precosDasFichas } from "./dados"
 import { BuscaLista } from "@/components/busca-lista"
@@ -101,8 +103,11 @@ export default async function Fichas({ searchParams }: { searchParams: Promise<{
   return (
     <div className="grid gap-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <div>
+        <div className="flex flex-wrap items-center gap-3">
           <h1 className="text-xl font-semibold">Fichas técnicas</h1>
+          <Link href="/fichas/pdf-cardapio" className={buttonVariants({ variant: "outline", className: "h-9 px-3" })}>
+            <FileDown className="size-4" aria-hidden /> PDF do cardápio
+          </Link>
         </div>
         {custos ? (
           <nav className="flex gap-1.5 text-sm" aria-label="Ordenar">
