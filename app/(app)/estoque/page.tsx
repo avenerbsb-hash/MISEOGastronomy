@@ -5,7 +5,8 @@ import { createClient } from "@/lib/supabase/server"
 import { exigirCasa, podeVerCustos } from "@/lib/sessao"
 import { dataCurta, dataHora, numero, reais } from "@/lib/formato"
 import { CopiarPedido } from "@/components/copiar-pedido"
-import { BotaoImprimir } from "@/components/botao-imprimir"
+import { BotaoEmitirPedido } from "@/components/botao-emitir-pedido"
+import { marcarPedidoEmitido } from "./actions"
 import { buttonVariants } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { LogoCasa } from "@/components/logo-casa"
@@ -30,13 +31,18 @@ export default async function PedidoSemana({ searchParams }: { searchParams: Pro
   const todos = ver === "todos"
   const porFornecedor = agrupar === "fornecedor"
   const supabase = await createClient()
-  const [pedido, ranking, contagens] = await Promise.all([
+  const [pedido, ranking, contagens, situacaoR] = await Promise.all([
     supabase.rpc("pedido_semanal", { p_estab: s.casa.id }),
     // melhor fornecedor (0020); sem a migração, a coluna fica vazia
     supabase.rpc("melhores_fornecedores_estoque", { p_estab: s.casa.id, p_compras: COMPRAS_RANKING }),
     // última contagem com responsável e hora (0023)
     supabase.rpc("ultimas_contagens", { p_estab: s.casa.id, p_limite: 1 }),
+    // pedido pendente ou emitido (0027)
+    supabase.rpc("situacao_pedido_estoque", { p_estab: s.casa.id }),
   ])
+  const situacao = situacaoR.error ? null
+    : ((situacaoR.data ?? []) as { contagem_id: string; emitido_em: string | null; emitido_por: string | null }[])[0] ?? null
+  const emitido = !!situacao?.emitido_em
   if (pedido.error) return <p className="text-sm text-muted-foreground">O controle de estoque ainda não está ativo nesta base (migração 0019).</p>
   const linhas = (pedido.data ?? []) as Linha[]
   const melhor = new Map(((ranking.data ?? []) as Melhor[]).map((m) => [m.insumo_id, m]))
@@ -82,7 +88,8 @@ export default async function PedidoSemana({ searchParams }: { searchParams: Pro
     )
   }
 
-  const pilula = (n: number) => cn("rounded-full px-2 py-0.5 font-semibold tabular-nums", n > 0 ? "bg-alta-fundo text-alta" : "bg-neutro-fundo text-neutro")
+  // vermelho enquanto o pedido não foi emitido; verde depois de emitir o PDF
+  const pilula = (n: number) => cn("rounded-full px-2 py-0.5 font-semibold tabular-nums", n <= 0 ? "bg-neutro-fundo text-neutro" : emitido ? "bg-queda-fundo text-queda" : "bg-alta-fundo text-alta")
 
   return (
     <div className="grid gap-3 print:gap-2 print:text-[10.5px]">
@@ -104,12 +111,22 @@ export default async function PedidoSemana({ searchParams }: { searchParams: Pro
         </p>
       </header>
 
+      {situacao && aPedir.length ? (
+        <p role="status" className={cn("flex flex-wrap items-center gap-x-2 rounded-lg px-3 py-2 text-sm print:hidden", emitido ? "bg-queda-fundo text-queda" : "bg-alta-fundo text-alta")}>
+          <b>{emitido ? "Pedido emitido" : "Pedido pendente"}</b>
+          <span>
+            {emitido
+              ? `PDF emitido em ${dataHora(situacao.emitido_em).replace(", ", " às ")} por ${situacao.emitido_por} · enviado aos fornecedores`
+              : "Contagem finalizada e pedido ainda não emitido. Confira e clique em Emitir PDF para enviar aos fornecedores."}
+          </span>
+        </p>
+      ) : null}
       {contagem === "ok" ? (
         <p role="status" className="rounded-lg bg-queda-fundo px-3 py-2 text-sm text-queda print:hidden">Contagem salva. O pedido abaixo já usa os números novos.</p>
       ) : null}
       <div className="flex flex-wrap items-center justify-between gap-2 print:hidden">
         <div className="text-sm">
-          <b className={cn("text-lg tabular-nums", aPedir.length ? "text-alta" : "text-queda")}>{aPedir.length}</b>{" "}
+          <b className={cn("text-lg tabular-nums", aPedir.length && !emitido ? "text-alta" : "text-queda")}>{aPedir.length}</b>{" "}
           {aPedir.length === 1 ? "item para pedir" : "itens para pedir"}
           {custos && aPedir.length ? (
             <> · estimado <b className="tabular-nums">{reais(total)}</b>{semValor ? <span className="text-muted-foreground"> (+{semValor} sem preço)</span> : null}</>
@@ -122,7 +139,7 @@ export default async function PedidoSemana({ searchParams }: { searchParams: Pro
         <div className="flex flex-wrap gap-2">
           <Link href="/estoque/contagem" className={buttonVariants({ variant: "outline", className: "h-11 px-4" })}>Nova contagem</Link>
           {aPedir.length ? <CopiarPedido texto={texto} /> : null}
-          <BotaoImprimir>Emitir PDF</BotaoImprimir>
+          <BotaoEmitirPedido contagemId={situacao?.contagem_id ?? null} acao={marcarPedidoEmitido} />
         </div>
       </div>
       <div className="flex flex-wrap items-center gap-1.5 text-sm print:hidden">

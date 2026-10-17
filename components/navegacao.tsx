@@ -9,7 +9,7 @@ import {
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 
-export type ItemMenu = { href: string; rotulo: string; contador?: number }
+export type ItemMenu = { href: string; rotulo: string; contador?: number; aviso?: string }
 
 const ICONES: Record<string, typeof House> = {
   "/inicio": House, "/cmv": PieChart, "/fichas": BookOpen, "/subprodutos": ChefHat,
@@ -36,9 +36,9 @@ function Itens({ itens, recolhido, aoEscolher }: { itens: ItemMenu[]; recolhido:
               <Icone className="size-5" aria-hidden />
               {i.contador ? (
                 <span className="absolute -right-2.5 -top-2 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-alta px-1 text-[10px] font-bold leading-none tabular-nums text-white ring-2 ring-painel"
-                  title={`${i.contador} compras para conferir`}>
+                  title={`${i.contador} ${i.aviso ?? "pendências"}`}>
                   {i.contador > 99 ? "99+" : i.contador}
-                  <span className="sr-only"> compras para conferir</span>
+                  <span className="sr-only"> {i.aviso ?? "pendências"}</span>
                 </span>
               ) : null}
             </span>

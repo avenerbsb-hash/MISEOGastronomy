@@ -16,6 +16,15 @@ export default async function LayoutApp({ children }: { children: React.ReactNod
       .eq("estabelecimento_id", s.casa.id).eq("status", "aberta")
     conferir = count ?? 0
   }
+  // pedido da última contagem ainda não emitido (0027): aviso no ícone de Estoque
+  let pedidoPendente = 0
+  if (s.casa && (ehGestor(s) || s.papel === "gerente" || s.papel === "estoquista")) {
+    const supabase = await createClient()
+    const { data, error } = await supabase.from("contagens_estoque").select("pedido_emitido_em")
+      .eq("estabelecimento_id", s.casa.id).order("data", { ascending: false }).order("criado_em", { ascending: false }).limit(1)
+    if (!error && data?.length && !data[0].pedido_emitido_em) pedidoPendente = 1
+  }
+  const avisoEstoque = "pedido da última contagem para emitir"
   // ordem do dia a dia: resumo, cardápio e fichas, depois cadastro e compras
   const itens: ItemMenu[] = ehGestor(s)
     ? [
@@ -24,15 +33,15 @@ export default async function LayoutApp({ children }: { children: React.ReactNod
         { href: "/fichas", rotulo: "Fichas técnicas" },
         { href: "/subprodutos", rotulo: "Preparos e bases" },
         { href: "/insumos", rotulo: "Insumos" },
-        { href: "/pendencias", rotulo: "Compras", contador: conferir },
-        { href: "/estoque", rotulo: "Estoque" },
+        { href: "/pendencias", rotulo: "Compras", contador: conferir, aviso: "compras para conferir" },
+        { href: "/estoque", rotulo: "Estoque", contador: pedidoPendente, aviso: avisoEstoque },
         { href: "/alertas", rotulo: "Alertas" },
         { href: "/casa", rotulo: "Dados da casa" },
         ...(s.admin ? [{ href: "/usuarios", rotulo: "Usuários" }] : []),
       ]
-    : s.papel === "gerente" ? [{ href: "/cmv", rotulo: "CMV" }, { href: "/fichas", rotulo: "Fichas técnicas" }, { href: "/estoque", rotulo: "Estoque" }]
+    : s.papel === "gerente" ? [{ href: "/cmv", rotulo: "CMV" }, { href: "/fichas", rotulo: "Fichas técnicas" }, { href: "/estoque", rotulo: "Estoque", contador: pedidoPendente, aviso: avisoEstoque }]
     : s.papel === "contagem" ? [{ href: "/estoque/contagem", rotulo: "Contagem" }]
-    : s.papel === "estoquista" ? [{ href: "/estoque", rotulo: "Estoque" }]
+    : s.papel === "estoquista" ? [{ href: "/estoque", rotulo: "Estoque", contador: pedidoPendente, aviso: avisoEstoque }]
     : [{ href: "/subprodutos", rotulo: "Preparos e bases" }, { href: "/fichas", rotulo: "Fichas técnicas" }]
 
   return (

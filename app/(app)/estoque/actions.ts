@@ -67,3 +67,13 @@ export async function alternarItemEstoque(id: string, ativo: boolean): Promise<E
   revalidatePath("/estoque", "layout")
   return { ok: ativo ? "Item de volta ao controle." : "Item fora do controle." }
 }
+
+// Emitir PDF do pedido (0027): grava quem e quando; o aviso do menu Estoque some
+export async function marcarPedidoEmitido(contagemId: string): Promise<void> {
+  const s = await exigirCasa()
+  if (s.papel === "contagem") return
+  const supabase = await createClient()
+  const { error } = await supabase.rpc("marcar_pedido_emitido", { p_estab: s.casa.id, p_contagem: contagemId })
+  if (error) throw new Error(traduzirErro(error))
+  revalidatePath("/", "layout")
+}

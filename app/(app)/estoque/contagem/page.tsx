@@ -3,6 +3,7 @@ import Link from "next/link"
 import { createClient } from "@/lib/supabase/server"
 import { exigirCasa, podeVerCustos } from "@/lib/sessao"
 import { dataCurta, dataHora, numero } from "@/lib/formato"
+import { cn } from "@/lib/utils"
 import { FormAcao, BotaoEnviar } from "@/components/form-acao"
 import { Entrada } from "@/components/campos"
 import { registrarContagem } from "../actions"
@@ -18,13 +19,17 @@ type Linha = {
 export default async function Contagem() {
   const s = await exigirCasa()
   const supabase = await createClient()
-  const [pedido, historico, comResponsavel] = await Promise.all([
+  const [pedido, historico, comResponsavel, emissoes] = await Promise.all([
     supabase.rpc("pedido_semanal", { p_estab: s.casa.id }),
     supabase.from("contagens_estoque").select("id, data, observacao, criado_em, contagem_itens(count)")
       .eq("estabelecimento_id", s.casa.id).order("data", { ascending: false }).order("criado_em", { ascending: false }).limit(10),
     // com responsável e hora (0023); sem a migração, só data e itens
     supabase.rpc("ultimas_contagens", { p_estab: s.casa.id, p_limite: 10 }),
+    // pedido emitido (0027); sem a migração, sem a situação
+    supabase.from("contagens_estoque").select("id, pedido_emitido_em").eq("estabelecimento_id", s.casa.id)
+      .order("data", { ascending: false }).order("criado_em", { ascending: false }).limit(10),
   ])
+  const emitidoEm = emissoes.error ? null : new Map(((emissoes.data ?? []) as { id: string; pedido_emitido_em: string | null }[]).map((e) => [e.id, e.pedido_emitido_em]))
   if (pedido.error) return <p className="text-sm text-muted-foreground">O controle de estoque ainda não está ativo nesta base (migração 0019).</p>
   const linhas = (pedido.data ?? []) as Linha[]
   if (!linhas.length) {
@@ -91,7 +96,14 @@ export default async function Contagem() {
                   {c.responsavel ? <> · <b>{c.responsavel}</b></> : null}
                   {c.observacao ? <span className="text-muted-foreground"> · {c.observacao}</span> : null}
                 </span>
-                <span className="text-xs text-muted-foreground">{c.itens} itens contados</span>
+                <span className="flex items-center gap-2 text-xs text-muted-foreground">
+                  {c.itens} itens contados
+                  {emitidoEm && emitidoEm.has(c.id) ? (
+                    <span className={cn("rounded-full px-2 py-0.5 font-semibold", emitidoEm.get(c.id) ? "bg-queda-fundo text-queda" : "bg-alta-fundo text-alta")}>
+                      {emitidoEm.get(c.id) ? "pedido emitido" : "pedido pendente"}
+                    </span>
+                  ) : null}
+                </span>
               </li>
             ))}
           </ul>
