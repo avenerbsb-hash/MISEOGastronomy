@@ -4,6 +4,7 @@ import { redirect } from "next/navigation"
 import { z } from "zod"
 import { createClient } from "@/lib/supabase/server"
 import { traduzirErro } from "@/lib/erros"
+import { destinoLogin } from "@/lib/destino-login"
 import type { Estado } from "@/components/form-acao"
 
 const esquema = z.object({
@@ -17,5 +18,5 @@ export async function entrar(_: Estado, dados: FormData): Promise<Estado> {
   const supabase = await createClient()
   const { error } = await supabase.auth.signInWithPassword({ email: v.data.email, password: v.data.senha })
   if (error) return { erro: traduzirErro(error) }
-  redirect("/")
+  redirect(destinoLogin(dados.get("next")))
 }
