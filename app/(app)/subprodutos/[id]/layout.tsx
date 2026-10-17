@@ -29,7 +29,7 @@ export default async function LayoutSubproduto({
 
   return (
     <div>
-      <div className="mb-2 text-sm"><Link href="/subprodutos" className="text-muted-foreground hover:underline">← Subprodutos</Link></div>
+      <div className="mb-2 text-sm"><Link href="/subprodutos" className="text-muted-foreground hover:underline">← Preparos e bases</Link></div>
       <h1 className="text-xl font-semibold">{r.nome}</h1>
       <p className="mb-3 text-sm text-muted-foreground">{r.codigo} · {NOME_DIMENSAO[r.dimensao_saida as Dimensao]}</p>
       <Abas itens={abas} />

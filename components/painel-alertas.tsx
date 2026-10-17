@@ -98,7 +98,7 @@ export function PainelAlertas({ insumos, fichas, dias, casa, erro = false }: { i
 
       <Card id="subprodutos">
         <CardHeader>
-          <CardTitle>Subprodutos</CardTitle>
+          <CardTitle>Preparos e bases</CardTitle>
           <CardDescription>Preparos de base (xaropes, cordiais, pré-batches…). A alta deles também chega às fichas que os usam.</CardDescription>
         </CardHeader>
         <CardContent>
@@ -112,7 +112,7 @@ export function PainelAlertas({ insumos, fichas, dias, casa, erro = false }: { i
 function Resumo({ numero, rotulo, href }: { numero: number; rotulo: string; href: string }) {
   return (
     <a href={href} className="rounded-xl border px-4 py-3 hover:bg-muted/50">
-      <div className={cn("text-2xl font-semibold tabular-nums", numero > 0 && "text-[#DC2626]")}>{numero}</div>
+      <div className={cn("text-2xl font-semibold tabular-nums", numero > 0 && "text-[#EC001C]")}>{numero}</div>
       <div className="text-sm text-muted-foreground">{rotulo}</div>
     </a>
   )
@@ -140,7 +140,7 @@ function ListaFichas({ itens }: { itens: AlertaFicha[] }) {
               {final && f.preco_venda != null ? (
                 <span>
                   CMV {percentual(f.cmv_anterior_pct)} →{" "}
-                  <b className={cn("text-foreground", Number(f.cmv_atual_pct) > CMV_ALERTA && "text-red-700 dark:text-red-400")}>{percentual(f.cmv_atual_pct)}</b>
+                  <b className={cn("text-foreground", Number(f.cmv_atual_pct) > CMV_ALERTA && "text-alta")}>{percentual(f.cmv_atual_pct)}</b>
                   {" "}· preço {reais(f.preco_venda)}
                 </span>
               ) : final ? <span>Sem preço de venda nesta casa</span> : null}

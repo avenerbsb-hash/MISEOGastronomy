@@ -89,7 +89,7 @@ export default async function RelatorioInsumos({ searchParams }: { searchParams:
                   <td className="py-1.5 pr-2 text-right whitespace-nowrap tabular-nums text-muted-foreground">{anterior != null ? custoPorUnidade(anterior, i.dimensao) : "—"}</td>
                   <td className={cn(
                     "py-1.5 pr-2 text-right whitespace-nowrap tabular-nums",
-                    st === "subiu" && "text-red-700", st === "caiu" && "text-emerald-700",
+                    st === "subiu" && "text-alta", st === "caiu" && "text-queda",
                   )}>
                     {st === "subiu" ? "▲ " : st === "caiu" ? "▼ " : ""}
                     {(st === "subiu" || st === "caiu") && pct != null ? pctPreciso(pct)

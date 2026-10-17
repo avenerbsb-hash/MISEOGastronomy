@@ -5,7 +5,7 @@ import { FormAcao, BotaoEnviar } from "@/components/form-acao"
 import { Campo, Entrada, Selecao } from "@/components/campos"
 import { criarSubproduto } from "../actions"
 
-export const metadata: Metadata = { title: "Novo subproduto" }
+export const metadata: Metadata = { title: "Novo preparo" }
 
 export default async function NovoSubproduto() {
   await exigirCustos()
@@ -14,7 +14,7 @@ export default async function NovoSubproduto() {
   return (
     <div className="grid max-w-xl gap-4">
       <div>
-        <h1 className="text-xl font-semibold">Novo subproduto</h1>
+        <h1 className="text-xl font-semibold">Novo preparo ou base</h1>
         <p className="text-sm text-muted-foreground">Molhos, bases, carnes limpas… Depois de criar, monte a receita no rascunho.</p>
       </div>
       <FormAcao acao={criarSubproduto} limparAoSalvar={false}>

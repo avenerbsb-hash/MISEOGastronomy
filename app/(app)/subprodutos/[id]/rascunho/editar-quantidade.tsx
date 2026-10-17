@@ -28,7 +28,7 @@ export function EditarQuantidade({ acao, quantidade, unidade }: { acao: Acao; qu
       </select>
       {mudou ? <Salvar /> : null}
       {estado?.erro ? <span role="alert" className="w-full text-xs text-destructive">{estado.erro}</span> : null}
-      {estado?.ok && !mudou ? <span role="status" className="text-xs text-emerald-700 dark:text-emerald-400">✓ {estado.ok}</span> : null}
+      {estado?.ok && !mudou ? <span role="status" className="text-xs text-queda">✓ {estado.ok}</span> : null}
     </form>
   )
 }

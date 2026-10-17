@@ -176,7 +176,7 @@ export function PainelCmv({
 
       <div className="grid gap-3 sm:grid-cols-3 print:grid-cols-3">
         <div className="rounded-xl border px-4 py-3">
-          <div className={cn("text-2xl font-semibold tabular-nums", media != null && media > meta && "text-[#DC2626]")}>{percentual(media)}</div>
+          <div className={cn("text-2xl font-semibold tabular-nums", media != null && media > meta && "text-[#EC001C]")}>{percentual(media)}</div>
           <div className="text-sm text-muted-foreground">CMV médio do cardápio</div>
         </div>
         <div className="rounded-xl border px-4 py-3">
@@ -185,7 +185,7 @@ export function PainelCmv({
           {formMeta}
         </div>
         <Link href={href({ situacao: "acima_da_meta" })} className="rounded-xl border px-4 py-3 hover:bg-muted/50">
-          <div className={cn("text-2xl font-semibold tabular-nums", acima > 0 && "text-[#DC2626]")}>{acima}</div>
+          <div className={cn("text-2xl font-semibold tabular-nums", acima > 0 && "text-[#EC001C]")}>{acima}</div>
           <div className="text-sm text-muted-foreground">{acima === 1 ? "item acima da meta" : "itens acima da meta"}</div>
         </Link>
       </div>

@@ -42,7 +42,7 @@ export function FormComponente({ acao, insumos, subprodutos, etapas, categorias 
               {listaInsumos.map((o) => <option key={o.valor} value={o.valor}>{o.nome}</option>)}
             </optgroup>
             {subprodutos.length ? (
-              <optgroup label="Subprodutos">
+              <optgroup label="Preparos e bases">
                 {subprodutos.map((o) => <option key={o.valor} value={o.valor}>{o.nome}</option>)}
               </optgroup>
             ) : null}

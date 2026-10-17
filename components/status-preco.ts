@@ -1,12 +1,13 @@
-// Paleta funcional dos indicadores de preço (filtros e badges de Insumos)
+// Paleta funcional (efeito para o negócio): alta de custo = vermelho #EC001C, queda = verde #00843B,
+// estável e sem comparação = cinza, sem preço = laranja (pendência)
 export type StatusPreco = "subiu" | "caiu" | "estavel" | "sem_comparacao" | "sem_preco"
 
 export const CORES_STATUS: Record<StatusPreco, { texto: string; fundo: string }> = {
-  subiu: { texto: "#DC2626", fundo: "#FEE2E2" },
-  caiu: { texto: "#16A34A", fundo: "#DCFCE7" },
-  estavel: { texto: "#64748B", fundo: "#F1F5F9" },
-  sem_comparacao: { texto: "#B45309", fundo: "#FEF3C7" },
-  sem_preco: { texto: "#EA580C", fundo: "#FFEDD5" },
+  subiu: { texto: "#EC001C", fundo: "#FFE3E7" },
+  caiu: { texto: "#00843B", fundo: "#DCF3E5" },
+  estavel: { texto: "#5F6B76", fundo: "#EEF1F4" },
+  sem_comparacao: { texto: "#5F6B76", fundo: "#EEF1F4" },
+  sem_preco: { texto: "#B85C00", fundo: "#FFEBD6" },
 }
 
 // "Todos" selecionado

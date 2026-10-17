@@ -26,7 +26,7 @@ export default async function LayoutFicha({
 
   return (
     <div>
-      <div className="mb-2 text-sm"><Link href="/fichas" className="text-muted-foreground hover:underline">← Fichas</Link></div>
+      <div className="mb-2 text-sm"><Link href="/fichas" className="text-muted-foreground hover:underline">← Fichas técnicas</Link></div>
       <div className="mb-3 flex flex-wrap items-start justify-between gap-2">
         <div>
           <h1 className="text-xl font-semibold">{r.nome}</h1>

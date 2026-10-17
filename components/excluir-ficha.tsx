@@ -40,7 +40,7 @@ export function FichaExcluida({ acao, podeRestaurar }: { acao: (estado: Estado) 
         {podeRestaurar && !estado?.ok ? <BotaoEnviar variant="outline" className="h-8 px-3 text-sm" enviando="Restaurando…">Restaurar ficha</BotaoEnviar> : null}
       </div>
       {estado?.erro && <p role="alert" className="text-destructive">{estado.erro}</p>}
-      {estado?.ok && <p role="status" className="text-emerald-700 dark:text-emerald-400">{estado.ok}</p>}
+      {estado?.ok && <p role="status" className="text-queda">{estado.ok}</p>}
     </form>
   )
 }

@@ -12,7 +12,7 @@ import { emAlerta, variacoesDasReceitas } from "@/lib/dados"
 import { AvisoAlertas } from "@/components/aviso-alertas"
 import { BadgeVariacao } from "@/components/variacao"
 
-export const metadata: Metadata = { title: "Fichas" }
+export const metadata: Metadata = { title: "Fichas técnicas" }
 
 type Receita = {
   id: string; codigo: string; nome: string; categoria_id: string | null; ativo: boolean
@@ -170,7 +170,7 @@ export default async function Fichas({ searchParams }: { searchParams: Promise<{
                         {p?.preco != null ? <> · Preço <b>{reais(p.preco)}</b></> : null}
                       </span>
                       {p?.cmv != null ? (
-                        <span className={cn("text-xs", Number(p.cmv) > CMV_ALERTA ? "font-semibold text-red-700 dark:text-red-400" : "text-muted-foreground")}>
+                        <span className={cn("text-xs", Number(p.cmv) > CMV_ALERTA ? "font-semibold text-alta" : "text-muted-foreground")}>
                           CMV {percentual(p.cmv)} · margem {reais(p.margem)}
                         </span>
                       ) : custo == null ? <span className="text-xs text-muted-foreground">Falta preço de algum insumo</span> : null}

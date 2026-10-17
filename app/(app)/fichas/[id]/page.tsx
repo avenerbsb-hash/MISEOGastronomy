@@ -59,7 +59,7 @@ export default async function FichaFinal({ params }: { params: Promise<{ id: str
                 <div><div className="text-xs text-muted-foreground">Preço no cardápio</div><div className="text-xl tabular-nums">{reais(p.preco)}</div></div>
                 <div>
                   <div className="text-xs text-muted-foreground">CMV</div>
-                  <div className={cn("text-xl tabular-nums", Number(p.cmv) > 30 && "font-semibold text-red-700 dark:text-red-400")}>{percentual(p.cmv)}</div>
+                  <div className={cn("text-xl tabular-nums", Number(p.cmv) > 30 && "font-semibold text-alta")}>{percentual(p.cmv)}</div>
                 </div>
                 <div><div className="text-xs text-muted-foreground">Margem</div><div className="text-xl tabular-nums">{reais(p.margem)}</div></div>
               </>

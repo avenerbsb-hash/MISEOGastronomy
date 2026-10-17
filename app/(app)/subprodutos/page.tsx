@@ -10,7 +10,7 @@ import { emAlerta, variacoesDasReceitas } from "@/lib/dados"
 import { AvisoAlertas } from "@/components/aviso-alertas"
 import { BadgeVariacao } from "@/components/variacao"
 
-export const metadata: Metadata = { title: "Subprodutos" }
+export const metadata: Metadata = { title: "Preparos e bases" }
 
 type Receita = {
   id: string; codigo: string; nome: string; dimensao_saida: Dimensao; ativo: boolean
@@ -46,13 +46,13 @@ export default async function Subprodutos({ searchParams }: { searchParams: Prom
     <div className="grid gap-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
-          <h1 className="text-xl font-semibold">Subprodutos</h1>
+          <h1 className="text-xl font-semibold">Preparos e bases</h1>
           <p className="text-sm text-muted-foreground">
             {custos ? `Custo pela versão vigente em ${s.casa.nome}` : "Fichas de produção"}
           </p>
         </div>
         {custos ? (
-          <Link href="/subprodutos/novo" className={buttonVariants({ className: "h-10 px-4" })}>Novo subproduto</Link>
+          <Link href="/subprodutos/novo" className={buttonVariants({ className: "h-10 px-4" })}>Novo preparo</Link>
         ) : null}
       </div>
 

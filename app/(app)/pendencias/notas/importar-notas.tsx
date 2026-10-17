@@ -216,7 +216,7 @@ export function ImportarNotas({ insumos: insumosIniciais, categorias, casa, tota
     const ins = r ? porId.get(r.insumoId) : undefined
     const ok = rascunhoValido(r, porId)
     return (
-      <div className={cn("grid gap-2 rounded-md p-2", ok ? "bg-emerald-500/10" : "bg-amber-500/10")}>
+      <div className={cn("grid gap-2 rounded-md p-2", ok ? "bg-queda-fundo" : "bg-amber-500/10")}>
         <div className="flex flex-wrap gap-3">
           {(["conversao", "pesagem", "ignorar"] as const).map((t) => (
             <label key={t} className="flex items-center gap-1.5">
@@ -268,7 +268,7 @@ export function ImportarNotas({ insumos: insumosIniciais, categorias, casa, tota
     const v = g.vinculo!
     return (
       <div className="flex flex-wrap items-center gap-2">
-        <span className="rounded-md bg-emerald-500/10 px-2 py-0.5 text-emerald-800 dark:text-emerald-300">
+        <span className="rounded-md bg-queda-fundo px-2 py-0.5 text-queda">
           ✓ {v.insumoNome} · {v.tipo === "conversao" ? `1 ${g.unidade} = ${numero(v.quantidadePorUnidade)} ${rotuloUnidade(v.unidade)}` : "pesar/contar no recebimento"}
         </span>
         <button type="button" className="text-xs text-muted-foreground underline" onClick={() => setAlterar((a) => ({ ...a, [g.chave]: true }))}>

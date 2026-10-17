@@ -16,7 +16,7 @@ export function SeletorCasa({
       <span className="sr-only">Casa</span>
       <select
         aria-label="Casa"
-        className={cn(classeCampo, "h-9 min-w-0 max-w-[60vw] font-medium sm:max-w-xs", pendente && "opacity-60")}
+        className={cn(classeCampo, "h-11 min-w-0 max-w-[60vw] font-medium sm:max-w-xs", pendente && "opacity-60")}
         defaultValue={atual}
         onChange={(e) => {
           const fd = new FormData()

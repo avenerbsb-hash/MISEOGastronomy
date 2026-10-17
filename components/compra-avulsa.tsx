@@ -65,7 +65,7 @@ export function CompraAvulsa({ acao, insumos, fornecedores, hoje }: {
         </p>
       )}
       {estado?.erro && <p role="alert" className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">{estado.erro}</p>}
-      {estado?.ok && <p role="status" className="rounded-md bg-emerald-500/10 px-3 py-2 text-sm text-emerald-700 dark:text-emerald-400">{estado.ok}</p>}
+      {estado?.ok && <p role="status" className="rounded-md bg-queda-fundo px-3 py-2 text-sm text-queda">{estado.ok}</p>}
       <div><BotaoEnviar>Lançar compra</BotaoEnviar></div>
     </form>
   )

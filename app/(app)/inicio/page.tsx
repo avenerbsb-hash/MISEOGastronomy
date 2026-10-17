@@ -119,7 +119,7 @@ export default async function Inicio() {
 function Indicador({ href, valor, rotulo, detalhe, destaque }: { href: string; valor: string; rotulo: string; detalhe: string; destaque: boolean }) {
   return (
     <Link href={href} className="grid gap-0.5 rounded-xl border px-4 py-3 hover:bg-muted/50">
-      <span className={cn("text-2xl font-semibold tabular-nums", destaque && "text-[#DC2626]")}>{valor}</span>
+      <span className={cn("text-2xl font-semibold tabular-nums", destaque && "text-[#EC001C]")}>{valor}</span>
       <span className="text-sm">{rotulo}</span>
       <span className="text-xs text-muted-foreground">{detalhe}</span>
     </Link>

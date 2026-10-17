@@ -78,7 +78,7 @@ export default async function Lotes({ params }: { params: Promise<{ id: string }
                       esperado {numero(l.esperado)} {rotuloUnidade(l.unidade_base)} · obtido {l.obtido == null ? "unidade inválida" : `${numero(l.obtido)} ${rotuloUnidade(l.unidade_base)}`}
                     </span>
                   </span>
-                  <span className={l.alerta ? "rounded-md bg-red-500/10 px-2 py-0.5 font-medium text-red-700 dark:text-red-400" : "rounded-md bg-muted px-2 py-0.5 text-muted-foreground"}>
+                  <span className={l.alerta ? "rounded-md bg-alta-fundo px-2 py-0.5 font-medium text-alta" : "rounded-md bg-muted px-2 py-0.5 text-muted-foreground"}>
                     {l.alerta ? "▲ Alerta " : ""}{percentual(l.desvio_pct, true)}
                   </span>
                 </li>
