@@ -149,3 +149,5 @@
   * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   thead { display: table-header-group; }
 }
+/* Celular: texto longo (truncate) não alarga a página — itens de grid podem encolher */
+main :where(.grid) > * { min-width: 0; }

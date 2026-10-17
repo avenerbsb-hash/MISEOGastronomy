@@ -49,7 +49,7 @@ export default async function Inicio() {
 
   const vermelho = CORES_STATUS.subiu.texto
   return (
-    <div className="grid gap-5">
+    <div className="grid gap-5 [&>*]:min-w-0">
       <div>
         <h1 className="text-xl font-semibold">Início</h1>
       </div>
@@ -70,7 +70,7 @@ export default async function Inicio() {
         ) : null}
       </section>
 
-      <div className="grid gap-4 lg:grid-cols-2">
+      <div className="grid gap-4 lg:grid-cols-2 [&>*]:min-w-0">
         <Quadro titulo="Itens mais acima da meta" link={{ href: "/cmv?situacao=acima_da_meta", rotulo: "Ver no Painel de CMV" }}
           vazio={acima.length ? null : "Nenhum item acima da meta."}>
           {acima.slice(0, 6).map((l) => (
@@ -137,7 +137,7 @@ function Quadro({ titulo, link, vazio, children }: {
   titulo: string; link: { href: string; rotulo: string }; vazio: string | null; children: React.ReactNode
 }) {
   return (
-    <section className="grid content-start rounded-xl border">
+    <section className="grid min-w-0 content-start rounded-xl border">
       <div className="flex items-center justify-between gap-2 border-b px-4 py-2.5">
         <h2 className="text-sm font-semibold">{titulo}</h2>
         <Link href={link.href} className="text-xs text-muted-foreground underline hover:text-foreground">{link.rotulo}</Link>
@@ -150,7 +150,7 @@ function Quadro({ titulo, link, vazio, children }: {
 function Linha({ href, titulo, detalhe, children }: { href: string; titulo: string; detalhe: string; children: React.ReactNode }) {
   return (
     <li>
-      <Link href={href} className="flex items-center justify-between gap-3 px-4 py-2 hover:bg-muted/50">
+      <Link href={href} className="flex min-h-11 min-w-0 items-center justify-between gap-3 px-4 py-2 hover:bg-muted/50">
         <span className="min-w-0">
           <span className="block truncate text-sm font-medium">{titulo}</span>
           <span className="block truncate text-xs text-muted-foreground">{detalhe}</span>
