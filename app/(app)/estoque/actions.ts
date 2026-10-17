@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache"
 import { redirect } from "next/navigation"
 import { z } from "zod"
 import { createClient } from "@/lib/supabase/server"
-import { exigirCasa, exigirCustos } from "@/lib/sessao"
+import { exigirCasa, exigirGerencia } from "@/lib/sessao"
 import { traduzirErro } from "@/lib/erros"
 import { decimal, opcional } from "@/lib/esquemas"
 import type { Estado } from "@/components/form-acao"
@@ -42,7 +42,7 @@ const esquemaItem = z.object({
 
 // Inclui ou atualiza um item controlado (mínimo, unidade de compra, conteúdo)
 export async function salvarItemEstoque(_: Estado, dados: FormData): Promise<Estado> {
-  const s = await exigirCustos()
+  const s = await exigirGerencia()
   const v = esquemaItem.safeParse({
     insumo_id: dados.get("insumo_id"), unidade_compra: dados.get("unidade_compra"),
     estoque_minimo: dados.get("estoque_minimo"), conteudo: opcional(dados.get("conteudo")),
@@ -60,7 +60,7 @@ export async function salvarItemEstoque(_: Estado, dados: FormData): Promise<Est
 
 // Tira (ou volta) um item do controle; as contagens antigas ficam guardadas
 export async function alternarItemEstoque(id: string, ativo: boolean): Promise<Estado> {
-  await exigirCustos()
+  await exigirGerencia()
   const supabase = await createClient()
   const { error } = await supabase.from("estoque_itens").update({ ativo, atualizado_em: new Date().toISOString() }).eq("id", id)
   if (error) return { erro: traduzirErro(error) }

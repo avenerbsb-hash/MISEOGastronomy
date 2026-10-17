@@ -1,6 +1,6 @@
 import type { Metadata } from "next"
 import { createClient } from "@/lib/supabase/server"
-import { exigirCustos } from "@/lib/sessao"
+import { exigirGerencia } from "@/lib/sessao"
 import { FormAcao, BotaoEnviar } from "@/components/form-acao"
 import { Entrada } from "@/components/campos"
 import { NovoItemEstoque } from "@/components/novo-item-estoque"
@@ -18,7 +18,7 @@ const br = (v: number | null) => (v == null ? "" : String(v).replace(".", ","))
 
 // Itens controlados, estoque mínimo e unidade de compra (gestor/admin)
 export default async function ItensEstoque() {
-  const s = await exigirCustos()
+  const s = await exigirGerencia()
   const supabase = await createClient()
   const [itens, insumos] = await Promise.all([
     supabase.from("estoque_itens").select("id, insumo_id, unidade_compra, conteudo, estoque_minimo, ativo, insumos(nome, dimensao)")

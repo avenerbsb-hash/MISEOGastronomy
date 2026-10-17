@@ -4,7 +4,7 @@ import { cookies } from "next/headers"
 import { redirect } from "next/navigation"
 import { createClient } from "@/lib/supabase/server"
 
-export type Papel = "admin" | "gestor" | "producao" | "estoquista" | "contagem"
+export type Papel = "admin" | "gestor" | "gerente" | "producao" | "estoquista" | "contagem"
 export type Casa = { id: string; nome: string; papel: Papel; logo: string | null }
 export type Sessao = {
   userId: string
@@ -64,15 +64,29 @@ export const obterSessao = cache(async (): Promise<Sessao> => {
   }
 })
 
+// Vê valores em R$ (nível 3 Gerência e acima)
 export function podeVerCustos(s: Sessao): boolean {
+  return s.papel === "admin" || s.papel === "gestor" || s.papel === "gerente"
+}
+
+// Acesso completo à casa (nível 4 Proprietário e administrador)
+export function ehGestor(s: Sessao): boolean {
   return s.papel === "admin" || s.papel === "gestor"
 }
 
-// Para páginas com valores em R$: produção é mandada para a ficha de produção
-export async function exigirCustos(): Promise<Sessao & { casa: Casa }> {
+// Nível 3 Gerência e acima: painel de CMV, preço de venda das fichas e estoque mínimo
+export async function exigirGerencia(): Promise<Sessao & { casa: Casa }> {
   const s = await obterSessao()
   if (!s.casa) redirect("/sem-acesso")
   if (!podeVerCustos(s)) redirect(inicioDoPapel(s))
+  return s as Sessao & { casa: Casa }
+}
+
+// Áreas completas (insumos, compras, alertas, preparos, início): nível 4 Proprietário e administrador
+export async function exigirCustos(): Promise<Sessao & { casa: Casa }> {
+  const s = await obterSessao()
+  if (!s.casa) redirect("/sem-acesso")
+  if (!ehGestor(s)) redirect(inicioDoPapel(s))
   return s as Sessao & { casa: Casa }
 }
 
@@ -80,7 +94,8 @@ export async function exigirCustos(): Promise<Sessao & { casa: Casa }> {
 export function inicioDoPapel(s: Sessao): string {
   if (s.papel === "contagem") return "/estoque/contagem"
   if (s.papel === "estoquista") return "/estoque"
-  return podeVerCustos(s) ? "/inicio" : "/subprodutos"
+  if (s.papel === "gerente") return "/cmv"
+  return ehGestor(s) ? "/inicio" : "/subprodutos"
 }
 
 // Fichas e preparos: quem é só do estoque volta para a sua tela

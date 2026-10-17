@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache"
 import { redirect } from "next/navigation"
 import { z } from "zod"
 import { createClient } from "@/lib/supabase/server"
-import { exigirCustos } from "@/lib/sessao"
+import { exigirCustos, exigirGerencia } from "@/lib/sessao"
 import { traduzirErro } from "@/lib/erros"
 import { decimal, opcional, texto } from "@/lib/esquemas"
 import type { Estado } from "@/components/form-acao"
@@ -17,7 +17,7 @@ const esquemaPreco = z.object({
 // Novo preço de venda na casa atual. Se a ficha ainda não está no cardápio da casa, entra no "Cardápio".
 // O registro do preço é feito pelo banco (aprovar_preco): histórico preservado, custo e CMV gravados.
 export async function definirPreco(receitaId: string, _: Estado, dados: FormData): Promise<Estado> {
-  const s = await exigirCustos()
+  const s = await exigirGerencia()
   const v = esquemaPreco.safeParse({ preco: dados.get("preco"), motivo: opcional(dados.get("motivo")) })
   if (!v.success) return { erro: v.error.issues[0].message }
   const supabase = await createClient()

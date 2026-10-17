@@ -1,7 +1,7 @@
 import Link from "next/link"
 import { notFound } from "next/navigation"
 import { createClient } from "@/lib/supabase/server"
-import { exigirProducao, podeVerCustos } from "@/lib/sessao"
+import { ehGestor, exigirProducao, podeVerCustos } from "@/lib/sessao"
 import { Abas } from "@/components/abas"
 import { buttonVariants } from "@/components/ui/button"
 import { MoreHorizontal } from "lucide-react"
@@ -24,7 +24,7 @@ export default async function LayoutFicha({
         { href: `/fichas/${id}`, rotulo: "Gestão" },
         { href: `/fichas/${id}/preparo`, rotulo: "Preparo" },
         { href: `/fichas/${id}/preco`, rotulo: "Preço de venda" },
-        { href: `/fichas/${id}/versoes`, rotulo: "Versões" },
+        ...(ehGestor(s) ? [{ href: `/fichas/${id}/versoes`, rotulo: "Versões" }] : []),
       ]
     : [{ href: `/fichas/${id}`, rotulo: "Preparo" }]
 
@@ -36,7 +36,7 @@ export default async function LayoutFicha({
           <h1 className="text-xl font-semibold">{r.nome}</h1>
           <p className="text-sm text-muted-foreground">{r.codigo}</p>
         </div>
-        {custos ? (
+        {ehGestor(s) ? (
           <div className="flex items-start gap-2">
             <Link href={`/fichas/${id}/editar`} className={buttonVariants({ className: "h-11 px-4" })}>Editar ficha</Link>
             {s.admin && r.ativo ? (

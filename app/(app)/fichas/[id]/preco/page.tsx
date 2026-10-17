@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server"
-import { exigirCustos } from "@/lib/sessao"
+import { exigirGerencia } from "@/lib/sessao"
 import { dataHora, percentual, reais } from "@/lib/formato"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { definirPreco } from "../../actions"
@@ -14,7 +14,7 @@ type LinhaPainel = {
 type Historico = { preco: number; vigente_desde: string; cmv_no_momento: number | null; custo_no_momento: number | null; motivo: string | null }
 
 export default async function PrecoVenda({ params }: { params: Promise<{ id: string }> }) {
-  const s = await exigirCustos()
+  const s = await exigirGerencia()
   const { id } = await params
   const supabase = await createClient()
 

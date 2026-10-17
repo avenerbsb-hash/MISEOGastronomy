@@ -5,7 +5,7 @@ import { trocarCasa } from "@/app/(app)/actions"
 import { classeCampo } from "@/components/campos"
 import { cn } from "@/lib/utils"
 
-const NOME_PAPEL = { admin: "Admin", gestor: "Gestor", producao: "Produção", estoquista: "Estoquista", contagem: "Contagem" } as const
+const NOME_PAPEL = { admin: "Admin", gestor: "Proprietário", gerente: "Gerência", producao: "Produção", estoquista: "Estoque", contagem: "Contagem" } as const
 
 export function SeletorCasa({
   casas, atual,

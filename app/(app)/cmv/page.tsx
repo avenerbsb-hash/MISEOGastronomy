@@ -1,6 +1,6 @@
 import type { Metadata } from "next"
 import { createClient } from "@/lib/supabase/server"
-import { exigirCustos } from "@/lib/sessao"
+import { exigirGerencia } from "@/lib/sessao"
 import { PainelCmv, FILTROS_CMV, NOTAS_MEDIA, type BlocoItem, type CustoMedia, type ItemDesativado, type LinhaCmv, type ResultadoItem } from "@/components/painel-cmv"
 import { EstruturaCustos, type Estrutura } from "@/components/estrutura-custos"
 import { FormAcao, BotaoEnviar } from "@/components/form-acao"
@@ -11,7 +11,7 @@ import { Selecao } from "@/components/campos"
 export const metadata: Metadata = { title: "CMV" }
 
 export default async function Cmv({ searchParams }: { searchParams: Promise<{ situacao?: string; ver?: string; bloco?: string }> }) {
-  const s = await exigirCustos()
+  const s = await exigirGerencia()
   const { situacao = "", ver = "", bloco = "" } = await searchParams
   const filtro = FILTROS_CMV.some((f) => f.valor === situacao) ? situacao : ""
   const supabase = await createClient()

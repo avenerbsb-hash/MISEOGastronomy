@@ -1,4 +1,4 @@
-import { obterSessao, podeVerCustos } from "@/lib/sessao"
+import { ehGestor, obterSessao, podeVerCustos } from "@/lib/sessao"
 import { createClient } from "@/lib/supabase/server"
 import { SeletorCasa } from "@/components/seletor-casa"
 import { MenuCelular, MenuLateral, type ItemMenu } from "@/components/navegacao"
@@ -17,7 +17,7 @@ export default async function LayoutApp({ children }: { children: React.ReactNod
     conferir = count ?? 0
   }
   // ordem do dia a dia: resumo, cardápio e fichas, depois cadastro e compras
-  const itens: ItemMenu[] = custos
+  const itens: ItemMenu[] = ehGestor(s)
     ? [
         { href: "/inicio", rotulo: "Início" },
         { href: "/cmv", rotulo: "CMV" },
@@ -28,7 +28,9 @@ export default async function LayoutApp({ children }: { children: React.ReactNod
         { href: "/estoque", rotulo: "Estoque" },
         { href: "/alertas", rotulo: "Alertas" },
         { href: "/casa", rotulo: "Dados da casa" },
+        ...(s.admin ? [{ href: "/usuarios", rotulo: "Usuários" }] : []),
       ]
+    : s.papel === "gerente" ? [{ href: "/cmv", rotulo: "CMV" }, { href: "/fichas", rotulo: "Fichas técnicas" }, { href: "/estoque", rotulo: "Estoque" }]
     : s.papel === "contagem" ? [{ href: "/estoque/contagem", rotulo: "Contagem" }]
     : s.papel === "estoquista" ? [{ href: "/estoque", rotulo: "Estoque" }]
     : [{ href: "/subprodutos", rotulo: "Preparos e bases" }, { href: "/fichas", rotulo: "Fichas técnicas" }]
