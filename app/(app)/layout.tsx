@@ -2,11 +2,19 @@ import { ehGestor, obterSessao, podeVerCustos } from "@/lib/sessao"
 import { createClient } from "@/lib/supabase/server"
 import { SeletorCasa } from "@/components/seletor-casa"
 import { MenuCelular, MenuLateral, type ItemMenu } from "@/components/navegacao"
-import { sair } from "./actions"
+import { aceitarTermos, sair } from "./actions"
+import { AceiteTermos } from "@/components/aceite-termos"
+import { VERSAO_TERMOS } from "@/lib/empresa"
 import { LogoCasa } from "@/components/logo-casa"
 
 export default async function LayoutApp({ children }: { children: React.ReactNode }) {
   const s = await obterSessao()
+  // aceite dos Termos e da Privacidade (0029); sem a migração, segue sem pedir
+  {
+    const supabase = await createClient()
+    const { data, error } = await supabase.from("aceites_termos").select("id").eq("user_id", s.userId).eq("versao", VERSAO_TERMOS).limit(1)
+    if (!error && !data?.length) return <AceiteTermos nome={s.nome} acao={aceitarTermos} sair={sair} />
+  }
   const custos = podeVerCustos(s)
   // compras esperando conferência na casa (número no menu)
   let conferir = 0

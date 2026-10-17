@@ -51,6 +51,8 @@ export async function middleware(request: NextRequest) {
     } = await supabase.auth.getUser()
 
     const publica = request.nextUrl.pathname.startsWith("/login")
+    // documentos legais: abertos para todos, sem redirecionar
+    if (/^\/(termos|privacidade)(\/|$)/.test(request.nextUrl.pathname)) return response
     if (!user && !publica) {
       const url = request.nextUrl.clone()
       url.pathname = "/login"

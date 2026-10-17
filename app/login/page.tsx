@@ -2,6 +2,7 @@ import type { Metadata } from "next"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { FormAcao, BotaoEnviar } from "@/components/form-acao"
 import { Campo, Entrada } from "@/components/campos"
+import Link from "next/link"
 import { entrar } from "./actions"
 
 export const metadata: Metadata = { title: "Entrar" }
@@ -24,6 +25,9 @@ export default function PaginaLogin() {
             </Campo>
             <BotaoEnviar className="w-full" enviando="Entrando…">Entrar</BotaoEnviar>
           </FormAcao>
+          <p className="mt-4 text-center text-xs text-muted-foreground">
+            <Link href="/termos" className="underline">Termos de Uso</Link> · <Link href="/privacidade" className="underline">Política de Privacidade</Link>
+          </p>
         </CardContent>
       </Card>
     </main>
