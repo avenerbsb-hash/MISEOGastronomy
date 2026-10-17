@@ -61,4 +61,21 @@ do $$ declare v numeric; begin
   if v is not null then raise exception 'FALHOU: produção viu valor em R$'; end if;
   raise notice 'OK  produção conta e vê o pedido sem R$';
 end $$;
+-- melhor fornecedor (0020): A a R$ 100/L e B a R$ 90/L → melhor é B, 10% mais barato que o pior
+set request.jwt.claim.sub = '00000000-0000-0000-0000-0000000000a1';
+insert into fornecedores (id, nome) values ('00000000-0000-0000-0000-000000000fa1', 'Teste Fornecedor A'), ('00000000-0000-0000-0000-000000000fb1', 'Teste Fornecedor B');
+select set_config('app.conferido', 'sim', false);
+insert into historico_precos (insumo_id, estabelecimento_id, fornecedor_id, data_compra, quantidade, unidade, valor_total, status) values
+  ('00000000-0000-0000-0000-000000000f01', '00000000-0000-0000-0000-0000000000e1', '00000000-0000-0000-0000-000000000fa1', '2026-10-01', 2, 'l', 200, 'validado'),
+  ('00000000-0000-0000-0000-000000000f01', '00000000-0000-0000-0000-0000000000e1', '00000000-0000-0000-0000-000000000fb1', '2026-10-05', 1, 'l', 90, 'validado');
+select set_config('app.conferido', '', false);
+select pg_temp.ok('melhor fornecedor do gin: B, R$ 90 a garrafa, 10% mais barato',
+  (select fornecedor = 'Teste Fornecedor B' and fornecedores = 2 and round(preco_unidade_compra, 2) = 90 and economia_pct = 10
+     from melhores_fornecedores_estoque('00000000-0000-0000-0000-0000000000e1') where insumo_id = '00000000-0000-0000-0000-000000000f01'));
+do $$ declare r record; begin
+  perform set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000a3', true);
+  select * into r from melhores_fornecedores_estoque('00000000-0000-0000-0000-0000000000e1') where insumo_id = '00000000-0000-0000-0000-000000000f01';
+  if r.fornecedor is distinct from 'Teste Fornecedor B' or r.preco_unidade_compra is not null then raise exception 'FALHOU: produção e melhor fornecedor'; end if;
+  raise notice 'OK  produção vê o melhor fornecedor, sem preço';
+end $$;
 \echo '== ESTOQUE OK'

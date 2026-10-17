@@ -8,7 +8,7 @@ import { cn } from "@/lib/utils"
 export function Abas({ itens }: { itens: { href: string; rotulo: string }[] }) {
   const atual = usePathname()
   return (
-    <nav className="-mx-4 mb-4 flex gap-1 overflow-x-auto border-b px-4" aria-label="Seções">
+    <nav className="-mx-4 mb-4 flex gap-1 overflow-x-auto border-b px-4 print:hidden" aria-label="Seções">
       {itens.map((i) => {
         const ativo = atual === i.href
         return (

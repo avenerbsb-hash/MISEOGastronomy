@@ -14,7 +14,7 @@ export default async function LayoutEstoque({ children }: { children: React.Reac
   ]
   return (
     <div>
-      <h1 className="mb-3 text-xl font-semibold">Estoque</h1>
+      <h1 className="mb-3 text-xl font-semibold print:hidden">Estoque</h1>
       <Abas itens={abas} />
       {children}
     </div>
