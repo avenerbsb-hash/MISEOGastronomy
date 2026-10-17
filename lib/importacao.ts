@@ -40,6 +40,13 @@ export type ResultadoImportacao = {
 
 export const chaveDescricao = (d: string) => d.trim().toLowerCase()
 
+// Bonificação: desconto acima de 50% do valor cheio (ex.: garrafa de R$ 80 por R$ 0,50) não vira preço
+export const ehBonificacao = (i: { quantidade: number; valorUnitario: number; valorTotal: number }) =>
+  i.quantidade * i.valorUnitario > 0 && i.valorTotal < 0.5 * i.quantidade * i.valorUnitario
+
+// Casa fictícia de demonstração: não recebe os preços das notas das casas reais
+export const CASA_DEMO = "Casa Demo"
+
 // Unidade da nota que já é unidade de medida: sugere conversão 1 para 1
 export const UNIDADE_NOTA_PADRAO: Record<string, { unidade: string; dimensao: Dimensao }> = {
   KG: { unidade: "kg", dimensao: "massa" }, KGS: { unidade: "kg", dimensao: "massa" },

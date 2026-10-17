@@ -7,7 +7,7 @@ import { traduzirErro } from "@/lib/erros"
 import { lerNfe, type Nota } from "@/lib/nfe"
 import type { Dimensao } from "@/lib/formato"
 import {
-  chaveDescricao, type Arquivo, type Decisao, type EscolhaNota, type PreviaNota,
+  CASA_DEMO, chaveDescricao, ehBonificacao, type Arquivo, type Decisao, type EscolhaNota, type PreviaNota,
   type ResultadoImportacao, type ResultadoLeitura, type Vinculo,
 } from "@/lib/importacao"
 
@@ -149,9 +149,9 @@ export async function importarNotas(
   const supabase = await createClient()
   const { notas } = lerArquivos(arquivos)
   const resultado: ResultadoImportacao = { notas: [], precosAtualizados: 0, aguardandoPesagem: 0, ignorados: 0 }
-  // Casas que recebem o preço: a atual ou todas em que o usuário é gestor/admin
+  // Casas que recebem o preço: a atual ou todas em que o usuário é gestor/admin (sem a Casa Demo)
   const casasAlvo = opcoes.todasAsCasas
-    ? s.casas.filter((c) => c.papel === "admin" || c.papel === "gestor").map((c) => c.id)
+    ? [...new Set([s.casa.id, ...s.casas.filter((c) => (c.papel === "admin" || c.papel === "gestor") && c.nome !== CASA_DEMO).map((c) => c.id)])]
     : [s.casa.id]
 
   for (const { arquivo, nota } of notas) {
@@ -239,8 +239,9 @@ export async function importarNotas(
             preco_unitario_nota: Math.round(item.valorUnitario * 10000) / 10000,
             valor_total: item.valorTotal,
             insumo_id: decisao && decisao.tipo !== "ignorar" ? decisao.insumoId : null,
-            status: decisao?.tipo === "ignorar" ? "ignorado" : "pendente",
-            motivo_pendencia: decisao?.tipo === "pesagem" ? "Aguardando pesagem/contagem no recebimento"
+            status: decisao?.tipo === "ignorar" || ehBonificacao(item) ? "ignorado" : "pendente",
+            motivo_pendencia: ehBonificacao(item) ? "Bonificação (desconto acima de 50%): não entra no preço"
+              : decisao?.tipo === "pesagem" ? "Aguardando pesagem/contagem no recebimento"
               : decisao?.tipo === "ignorar" ? "Não é insumo (ignorado na importação)" : null,
           })),
       )
@@ -251,7 +252,7 @@ export async function importarNotas(
       let atualizados = 0
       const conversoes = new Map<string, { descricao: string; qtd: number; unidade: string }>()
       for (const { item, decisao } of finais) {
-        if (decisao?.tipo === "conversao") {
+        if (decisao?.tipo === "conversao" && !ehBonificacao(item)) {
           conversoes.set(chaveDescricao(item.descricao), { descricao: item.descricao, qtd: decisao.quantidadePorUnidade, unidade: decisao.unidade })
         }
       }
@@ -263,8 +264,9 @@ export async function importarNotas(
         if (error) falhas.push(`${c.descricao}: ${traduzirErro(error)}`)
         else atualizados += Number(data ?? 0)
       }
-      const pesagem = naCasaAtual ? finais.filter((f) => f.decisao?.tipo === "pesagem").length : 0
-      const ignorados = naCasaAtual ? finais.filter((f) => f.decisao?.tipo === "ignorar").length : 0
+      const pesagem = naCasaAtual ? finais.filter((f) => f.decisao?.tipo === "pesagem" && !ehBonificacao(f.item)).length : 0
+      const ignorados = naCasaAtual ? finais.filter((f) => f.decisao?.tipo === "ignorar" || ehBonificacao(f.item)).length : 0
+      const bonificados = finais.filter((f) => ehBonificacao(f.item)).length
       resultado.precosAtualizados += atualizados
       resultado.aguardandoPesagem += pesagem
       resultado.ignorados += ignorados
@@ -272,7 +274,7 @@ export async function importarNotas(
         falhas.length === 0,
         falhas.length
           ? `Importada, mas sem preço para: ${falhas.join("; ")}`
-          : `${atualizados} preço(s) lançado(s) em ${casasDaNota.length} casa(s), ${pesagem} aguardando pesagem, ${ignorados} ignorado(s). Altas acima do limite ficam em Compras para conferência.`,
+          : `${atualizados} preço(s) lançado(s) em ${casasDaNota.length} casa(s), ${pesagem} aguardando pesagem, ${ignorados} ignorado(s)${bonificados ? ` (${bonificados} bonificação: fora do preço)` : ""}. Altas acima do limite ficam em Compras para conferência.`,
         fornecedor.nome,
       )
     } catch (e) {

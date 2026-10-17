@@ -9,7 +9,7 @@ import { BuscaInsumo } from "@/components/busca-insumo"
 import { dimensaoProvavel, nomeSugerido, sugerirConversao } from "@/lib/sugestoes-nota"
 import { dataCurta, numero, reais, rotuloUnidade, UNIDADES_POR_DIMENSAO, type Dimensao } from "@/lib/formato"
 import {
-  chaveDescricao,
+  chaveDescricao, ehBonificacao,
   type Arquivo, type EscolhaNota, type PreviaNota, type ResultadoImportacao, type ResultadoLeitura, type Vinculo,
 } from "@/lib/importacao"
 import { cn } from "@/lib/utils"
@@ -417,7 +417,10 @@ export function ImportarNotas({ insumos: insumosIniciais, categorias, casa, tota
                       <li key={item.n} className="grid gap-2 px-3 py-3 text-sm">
                         <div className="flex flex-wrap justify-between gap-2">
                           <span className="font-medium">{item.n}. {item.descricao}</span>
-                          <span className="tabular-nums text-muted-foreground">{numero(item.quantidade)} {item.unidade} · {reais(item.valorTotal)}</span>
+                          <span className="tabular-nums text-muted-foreground">
+                            {numero(item.quantidade)} {item.unidade} · {reais(item.valorTotal)}
+                            {ehBonificacao(item) ? <span className="ml-2 rounded-full bg-neutro-fundo px-2 py-0.5 text-xs font-semibold text-neutro" title="Desconto acima de 50%: o item é cadastrado, mas este valor não vira preço">bonificação · fora do preço</span> : null}
+                          </span>
                         </div>
                         {automatico(g) ? resumoAutomatico(g) : editorGrupo(g)}
                       </li>
