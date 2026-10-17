@@ -53,9 +53,15 @@ export function MenuLateral({ itens }: { itens: ItemMenu[] }) {
     setRecolhido((r) => { try { localStorage.setItem(CHAVE, r ? "0" : "1") } catch {} return !r })
   }
   return (
-    <aside className={cn("sticky top-14 hidden h-[calc(100dvh-3.5rem)] shrink-0 flex-col justify-between bg-painel px-2 py-3 text-white md:flex print:hidden",
+    <aside className={cn("sticky top-0 hidden h-dvh shrink-0 flex-col justify-between bg-painel px-2 pb-3 text-white md:flex print:hidden",
       recolhido ? "w-16" : "w-56")}>
-      <Itens itens={itens} recolhido={recolhido} />
+      <div className="grid gap-3">
+        {/* marca na mesma altura do cabeçalho */}
+        <Link href={itens[0]?.href ?? "/"} className={cn("flex h-14 items-center border-b border-white/10 font-semibold tracking-[0.2em] text-white", recolhido ? "justify-center" : "px-3")}>
+          {recolhido ? "M" : "MISEO"}
+        </Link>
+        <Itens itens={itens} recolhido={recolhido} />
+      </div>
       <button type="button" onClick={alternar} aria-label={recolhido ? "Abrir menu" : "Recolher menu"}
         className="flex min-h-11 items-center justify-center gap-2 rounded-lg text-sm text-white/60 hover:bg-white/8 hover:text-white">
         {recolhido ? <ChevronsRight className="size-5" /> : <><ChevronsLeft className="size-5" /> Recolher menu</>}

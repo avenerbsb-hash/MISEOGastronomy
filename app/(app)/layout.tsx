@@ -36,21 +36,22 @@ export default async function LayoutApp({ children }: { children: React.ReactNod
     : [{ href: "/subprodutos", rotulo: "Preparos e bases" }, { href: "/fichas", rotulo: "Fichas técnicas" }]
 
   return (
-    <div className="min-h-dvh">
-      <header className="sticky top-0 z-30 border-b bg-background/95 backdrop-blur print:hidden">
-        <div className="flex h-14 items-center gap-2 px-2 sm:px-4">
-          {s.casa ? <MenuCelular itens={itens} /> : null}
-          {s.casa?.logo ? <LogoCasa url={s.casa.logo} nome={s.casa.nome} className="h-9 rounded" /> : <span className="hidden font-semibold tracking-wide sm:inline">MISEO</span>}
-          {s.casa ? <SeletorCasa casas={s.casas} atual={s.casa.id} /> : null}
-          <form action={sair} className="ml-auto">
-            <button type="submit" className="min-h-11 rounded-lg px-3 text-sm text-muted-foreground hover:bg-muted" title={s.email}>
-              Sair
-            </button>
-          </form>
-        </div>
-      </header>
-      <div className="flex">
-        {s.casa ? <MenuLateral itens={itens} /> : null}
+    <div className="flex min-h-dvh">
+      {s.casa ? <MenuLateral itens={itens} /> : null}
+      <div className="flex min-w-0 flex-1 flex-col">
+        <header className="sticky top-0 z-30 border-b bg-background/95 backdrop-blur print:hidden">
+          <div className="flex h-14 items-center gap-2 px-2 sm:px-4">
+            {s.casa ? <MenuCelular itens={itens} /> : null}
+            {s.casa?.logo ? <LogoCasa url={s.casa.logo} nome={s.casa.nome} className="h-9 rounded" />
+              : <span className={s.casa ? "hidden font-semibold tracking-wide sm:inline md:hidden" : "font-semibold tracking-wide"}>MISEO</span>}
+            {s.casa ? <SeletorCasa casas={s.casas} atual={s.casa.id} /> : null}
+            <form action={sair} className="ml-auto">
+              <button type="submit" className="min-h-11 rounded-lg px-3 text-sm text-muted-foreground hover:bg-muted" title={s.email}>
+                Sair
+              </button>
+            </form>
+          </div>
+        </header>
         <main className="min-w-0 flex-1 px-3 py-4 sm:px-6 print:p-0">
           {s.casa ? (
             children

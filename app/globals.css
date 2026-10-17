@@ -6,6 +6,7 @@
 
 @theme inline {
   --color-painel: var(--painel);
+  --color-area: var(--area);
   --color-painel-alta: var(--painel-alta);
   --color-painel-queda: var(--painel-queda);
   --color-background: var(--background);
@@ -67,6 +68,8 @@
   --neutro-fundo: #EEF1F4;
   /* menu lateral e faixa do Início (azul-marinho); vermelho/verde mais claros para ler sobre o fundo escuro */
   --painel: #0B1B33;
+  /* fundo da área do Início (cards brancos por cima) */
+  --area: #F4F6F9;
   --painel-alta: #FF6B78;
   --painel-queda: #3DD68C;
   --background: oklch(1 0 0);
@@ -104,6 +107,7 @@
 }
 
 .dark {
+  --area: oklch(0.18 0 0);
   --background: oklch(0.145 0 0);
   --foreground: oklch(0.985 0 0);
   --card: oklch(0.205 0 0);

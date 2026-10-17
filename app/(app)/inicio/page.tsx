@@ -30,6 +30,10 @@ type Oportunidade = {
 const SEMANAS = 12
 const ALTA_CRITICA = 10 // % no mês
 const QUEDA_RELEVANTE = -5 // % no mês
+// variação mensal fora desta faixa costuma ser embalagem/unidade diferente entre notas: "conferir unidade"
+const SUSPEITA_ALTA = 100
+const SUSPEITA_QUEDA = -40
+const suspeita = (pct: number | null | undefined) => pct != null && (Number(pct) > SUSPEITA_ALTA || Number(pct) < SUSPEITA_QUEDA)
 
 // Central de inteligência de custos da casa. Todos os números vêm do banco (painel_cmv_casa, cmv_da_casa,
 // conferencias_da_casa, alertas, indicadores_insumos, serie_mercado_casa e oportunidades_economia);
@@ -68,14 +72,16 @@ export default async function Inicio() {
   const col = <K extends keyof Ponto>(k: K) => semanas.map((p) => p[k] as number | null)
 
   // insumos que mais subiram / caíram no mês (média ponderada do mês × mês anterior)
-  const ind = indicadores ? [...indicadores.values()].filter((i) => i.variacao_mensal_pct != null) : []
+  const ind = indicadores ? [...indicadores.values()].filter((i) => i.variacao_mensal_pct != null && usados.has(i.insumo_id)) : []
+  const confiaveisPrimeiro = (a: { variacao_mensal_pct: number | null }, b: { variacao_mensal_pct: number | null }) =>
+    Number(suspeita(a.variacao_mensal_pct)) - Number(suspeita(b.variacao_mensal_pct))
   const subiramTodos = ind.filter((i) => i.status_mensal === "subiu").sort((a, b) => Number(b.variacao_mensal_pct) - Number(a.variacao_mensal_pct))
   const cairamTodos = ind.filter((i) => i.status_mensal === "caiu").sort((a, b) => Number(a.variacao_mensal_pct) - Number(b.variacao_mensal_pct))
-  const subiram = subiramTodos.slice(0, 6)
-  const cairam = cairamTodos.slice(0, 6)
-  const criticas = subiramTodos.filter((i) => Number(i.variacao_mensal_pct) >= ALTA_CRITICA).length
-  const relevantes = cairamTodos.filter((i) => Number(i.variacao_mensal_pct) <= QUEDA_RELEVANTE).length
-  const oportunidades = oport.error ? null : ((oport.data ?? []) as Oportunidade[])
+  const subiram = [...subiramTodos].sort(confiaveisPrimeiro).slice(0, 6)
+  const cairam = [...cairamTodos].sort(confiaveisPrimeiro).slice(0, 6)
+  const criticas = subiramTodos.filter((i) => Number(i.variacao_mensal_pct) >= ALTA_CRITICA && !suspeita(i.variacao_mensal_pct)).length
+  const relevantes = cairamTodos.filter((i) => Number(i.variacao_mensal_pct) <= QUEDA_RELEVANTE && !suspeita(i.variacao_mensal_pct)).length
+  const oportunidades = oport.error ? null : ((oport.data ?? []) as Oportunidade[]).filter((o) => usados.has(o.insumo_id))
   const economias = (oportunidades ?? []).filter((o) => !o.conferir_unidade)
   const conferirUnidade = (oportunidades ?? []).filter((o) => o.conferir_unidade)
 
@@ -97,15 +103,16 @@ export default async function Inicio() {
     { rotulo: "CMV médio", valor: percentual(media), delta: delta(hoje?.var_cmv_pp, " p.p."), tom: tomDe(hoje?.var_cmv_pp), href: "/cmv" },
     { rotulo: "Acima da meta", valor: String(acima.length), delta: delta(hoje?.var_acima), tom: tomDe(hoje?.var_acima), href: "/cmv?situacao=acima_da_meta" },
     { rotulo: "Compras p/ conferir", valor: conferencias ? String(conferencias.length) : "—", delta: delta(hoje?.var_conferencias), tom: tomDe(hoje?.var_conferencias), href: "/pendencias" },
-    { rotulo: `Altas críticas (≥ ${ALTA_CRITICA}% no mês)`, valor: String(criticas), tom: criticas ? "alta" : "neutro", href: "/insumos?variacao=subiu&ordem=alta" },
-    { rotulo: `Quedas relevantes (≥ ${-QUEDA_RELEVANTE}% no mês)`, valor: String(relevantes), tom: relevantes ? "queda" : "neutro", href: "/insumos?variacao=caiu&ordem=queda" },
+    { rotulo: `Ingredientes em alta forte (≥ ${ALTA_CRITICA}% no mês)`, valor: String(criticas), tom: criticas ? "alta" : "neutro", href: "/insumos?variacao=subiu&ordem=alta" },
+    { rotulo: `Em queda forte (≥ ${-QUEDA_RELEVANTE}% no mês)`, valor: String(relevantes), tom: relevantes ? "queda" : "neutro", href: "/insumos?variacao=caiu&ordem=queda" },
     { rotulo: "Oportunidades de economia", valor: oportunidades ? String(economias.length) : "—", tom: economias.length ? "queda" : "neutro", href: "#oportunidades" },
-    ...subiram.slice(0, 4).map((i): ItemTicker => ({ rotulo: insumo.get(i.insumo_id)?.nome ?? "—", valor: "", delta: `▲ ${pctPreciso(i.variacao_mensal_pct!)}`, tom: "alta", href: `/insumos/${i.insumo_id}` })),
-    ...cairam.slice(0, 4).map((i): ItemTicker => ({ rotulo: insumo.get(i.insumo_id)?.nome ?? "—", valor: "", delta: `▼ ${pctPreciso(i.variacao_mensal_pct!)}`, tom: "queda", href: `/insumos/${i.insumo_id}` })),
+    ...subiram.filter((i) => !suspeita(i.variacao_mensal_pct)).slice(0, 4).map((i): ItemTicker => ({ rotulo: insumo.get(i.insumo_id)?.nome ?? "—", valor: "", delta: `▲ ${pctPreciso(i.variacao_mensal_pct!)}`, tom: "alta", href: `/insumos/${i.insumo_id}` })),
+    ...cairam.filter((i) => !suspeita(i.variacao_mensal_pct)).slice(0, 4).map((i): ItemTicker => ({ rotulo: insumo.get(i.insumo_id)?.nome ?? "—", valor: "", delta: `▼ ${pctPreciso(i.variacao_mensal_pct!)}`, tom: "queda", href: `/insumos/${i.insumo_id}` })),
   ]
 
   return (
-    <div className="grid gap-5 [&>*]:min-w-0">
+    <div className="-mx-3 -my-4 min-h-[calc(100dvh-3.5rem)] bg-area px-3 py-4 sm:-mx-6 sm:px-6 print:m-0 print:bg-transparent">
+    <div className="mx-auto grid max-w-[1600px] gap-5 [&>*]:min-w-0">
       <div className="flex flex-wrap items-end justify-between gap-2">
         <div>
           <h1 className="text-xl font-semibold">Início</h1>
@@ -158,7 +165,7 @@ export default async function Inicio() {
                 <tr key={l.item_id} className="hover:bg-muted/40">
                   <td className="max-w-0 px-3 py-2">
                     <Link href={`/fichas/${l.receita_id}/preco`} className="block truncate font-medium hover:underline">{l.produto}</Link>
-                    <span className="block truncate text-xs text-muted-foreground">{l.cardapio}</span>
+                    <span className="block truncate text-[13px] text-muted-foreground">{l.cardapio}</span>
                   </td>
                   <td className="px-3 py-2 text-right tabular-nums">{reais(l.preco_publicado)}</td>
                   <td className="px-3 py-2 text-right"><Pilula tom="alta">{percentual(l.cmv_atual_pct)}</Pilula></td>
@@ -175,21 +182,27 @@ export default async function Inicio() {
         <Quadro titulo="Compras aguardando conferência" sub="última compra × custo validado anterior"
           link={{ href: "/pendencias", rotulo: "Conferir em Compras" }}
           vazio={conferencias == null ? "Conferência de compras indisponível." : conferencias.length ? null : "Nenhuma compra esperando conferência."}>
-          <Tabela cab={["Insumo", "Data", "Anterior", "Atual", "Variação", "Risco"]} ocultar={[1, 2]}>
+          <Tabela cab={["Insumo", "Compra", "Anterior", "Atual", "Variação", "Risco", ""]} ocultar={[1, 2]}>
             {(conferencias ?? []).slice(0, 6).map((c) => {
               const alto = Number(c.variacao_pct) >= 2 * Number(c.limite_pct)
               return (
                 <tr key={c.id} className="hover:bg-muted/40">
                   <td className="max-w-0 px-3 py-2">
                     <Link href="/pendencias" className="block truncate font-medium hover:underline">{c.insumo}</Link>
-                    <span className="block truncate text-xs text-muted-foreground">{c.fornecedor ?? "fornecedor não informado"}</span>
+                    <span className="block truncate text-[13px] text-muted-foreground">{c.fornecedor ?? "fornecedor não informado"}</span>
                   </td>
-                  <td className="hidden whitespace-nowrap px-3 py-2 text-right tabular-nums sm:table-cell">{dataCurta(c.data_compra)}</td>
+                  <td className="hidden px-3 py-2 text-right sm:table-cell">
+                    <span className="block whitespace-nowrap tabular-nums">{dataCurta(c.data_compra)}</span>
+                    <span className={cn("block whitespace-nowrap text-xs", dias(c.data_compra) > 30 ? "font-semibold text-alta" : "text-muted-foreground")}>há {dias(c.data_compra)} dias</span>
+                  </td>
                   <td className="hidden whitespace-nowrap px-3 py-2 text-right tabular-nums text-muted-foreground sm:table-cell">{custoPorUnidade(c.custo_referencia, c.dimensao)}</td>
                   <td className="whitespace-nowrap px-3 py-2 text-right tabular-nums">{custoPorUnidade(c.custo_novo, c.dimensao)}</td>
                   <td className="whitespace-nowrap px-3 py-2 text-right font-semibold tabular-nums text-alta">▲ {pctPreciso(c.variacao_pct)}</td>
                   <td className="px-3 py-2 text-right" title={`limite da casa ${percentual(c.limite_pct)}`}>
                     <Pilula tom={alto ? "alta" : "neutro"}>{alto ? "Alto" : "Moderado"}</Pilula>
+                  </td>
+                  <td className="px-2 py-2 text-right">
+                    <Link href="/pendencias" className="inline-flex min-h-8 items-center rounded-md border bg-background px-2 text-xs font-medium hover:bg-muted">Conferir</Link>
                   </td>
                 </tr>
               )
@@ -210,15 +223,20 @@ export default async function Inicio() {
                   <tr key={i.insumo_id} className="hover:bg-muted/40">
                     <td className="max-w-0 px-3 py-2">
                       <Link href={`/insumos/${i.insumo_id}`} className="block truncate font-medium hover:underline">{n?.nome ?? "—"}</Link>
-                      <span className="block truncate text-xs text-muted-foreground">{i.compras_mes} {i.compras_mes === 1 ? "compra" : "compras"} em {nomeMes(i.mes)}</span>
+                      <span className="block truncate text-[13px] text-muted-foreground">{i.compras_mes} {i.compras_mes === 1 ? "compra" : "compras"} em {nomeMes(i.mes)}</span>
                     </td>
                     <td className="hidden whitespace-nowrap px-3 py-2 text-right tabular-nums text-muted-foreground sm:table-cell">{n ? custoPorUnidade(i.media_mes_anterior, n.dimensao) : "—"}</td>
                     <td className="whitespace-nowrap px-3 py-2 text-right tabular-nums">{n ? custoPorUnidade(i.media_mes, n.dimensao) : "—"}</td>
-                    <td className="px-3 py-2 text-right"><SeloIndicador status={i.status_mensal} pct={i.variacao_mensal_pct} /></td>
+                    <td className="px-3 py-2 text-right">
+                      {suspeita(i.variacao_mensal_pct)
+                        ? <Pilula tom="neutro" titulo={`Variação de ${pctPreciso(i.variacao_mensal_pct!)}: confira se as notas usam a mesma embalagem ou unidade`}>conferir unidade</Pilula>
+                        : <SeloIndicador status={i.status_mensal} pct={i.variacao_mensal_pct} />}
+                    </td>
                     <td className="hidden px-3 py-2 text-right sm:table-cell" title="Última compra × compra anterior (compras consecutivas)">
                       <SeloIndicador status={i.status_ultima} pct={i.variacao_ultima_pct} />
                     </td>
-                    <td className="w-24 px-3 py-2"><Sparkline valores={serieInsumo(i.insumo_id)} tom={tom} rotulo={`Média mensal de ${n?.nome ?? "insumo"} nos últimos 6 meses`} /></td>
+                    <td className="w-24 px-3 py-2"><Sparkline valores={serieInsumo(i.insumo_id)} tom={suspeita(i.variacao_mensal_pct) ? "neutro" : tom} minimo={3}
+                      falta={`só ${serieInsumo(i.insumo_id).filter((v) => v != null).length} meses`} rotulo={`Média mensal de ${n?.nome ?? "insumo"} nos últimos 6 meses`} /></td>
                   </tr>
                 )
               })}
@@ -258,6 +276,7 @@ export default async function Inicio() {
         </section>
       ) : null}
     </div>
+    </div>
   )
 }
 
@@ -268,6 +287,11 @@ function delta(v: number | null | undefined, sufixo = ""): string | undefined {
   if (n === 0) return "= estável"
   const txt = new Intl.NumberFormat("pt-BR", { maximumFractionDigits: 1 }).format(Math.abs(n))
   return `${n > 0 ? "▲ +" : "▼ −"}${txt}${sufixo}`
+}
+
+// dias desde a data da compra (calendário de São Paulo)
+function dias(data: string): number {
+  return Math.max(0, Math.round((Date.parse(hojeSP()) - Date.parse(data.slice(0, 10))) / 86400000))
 }
 
 // primeiros dias dos últimos n meses (calendário de São Paulo), do mais antigo para o atual
@@ -289,8 +313,9 @@ function Card({ href, icone: Icone, titulo, valor, detalhe, delta: d, tom, serie
   return (
     <Link href={href} className="surgir group relative grid min-w-0 content-between gap-2 overflow-hidden rounded-xl border bg-card px-4 py-3 shadow-sm transition-shadow hover:shadow-md">
       <span aria-hidden className={cn("absolute inset-y-0 left-0 w-1", risco === "alta" ? "bg-alta" : risco === "queda" ? "bg-queda" : "bg-neutro/40")} />
+      <span className="sr-only">{risco === "alta" ? "Atenção" : risco === "queda" ? "Favorável" : "Neutro"}</span>
       <div className="flex items-start justify-between gap-2">
-        <span className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+        <span className="flex items-center gap-1.5 text-[13px] font-medium text-foreground/75">
           <Icone className="size-4" aria-hidden /> {titulo}
         </span>
         <span className="relative">
@@ -301,11 +326,11 @@ function Card({ href, icone: Icone, titulo, valor, detalhe, delta: d, tom, serie
         </span>
       </div>
       <div className="flex items-baseline gap-2">
-        <span className={cn("text-3xl font-semibold tabular-nums tracking-tight", risco === "alta" && "text-alta")}>{valor}</span>
+        <span className="text-3xl font-semibold tabular-nums tracking-tight">{valor}</span>
         {d ? <span className={cn("text-xs font-semibold tabular-nums", TEXTO_TOM[tom])} title="comparado com 4 semanas atrás">{d}</span> : null}
       </div>
       <Sparkline valores={serie} tom={tom} rotulo={`${titulo}: evolução semanal`} />
-      <span className="text-xs text-muted-foreground">{detalhe}</span>
+      <span className="text-[13px] text-foreground/65">{detalhe}</span>
     </Link>
   )
 }
@@ -316,8 +341,9 @@ type ItemTicker = { rotulo: string; valor: string; delta?: string; tom: Tom; hre
 function Ticker({ itens }: { itens: ItemTicker[] }) {
   const cor: Record<Tom, string> = { alta: "text-painel-alta", queda: "text-painel-queda", neutro: "text-white/60" }
   return (
-    <nav aria-label="Indicadores do mercado" className="surgir overflow-x-auto rounded-xl bg-painel text-white shadow-sm [scrollbar-width:thin]">
-      <ul className="flex w-max min-w-full divide-x divide-white/10">
+    <nav aria-label="Indicadores do mercado" className="surgir relative overflow-hidden rounded-xl bg-painel text-white shadow-sm">
+      <div className="overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      <ul className="flex w-max min-w-full divide-x divide-white/10 pr-10">
         {itens.map((t, i) => (
           <li key={i}>
             <Link href={t.href} className="flex min-h-12 items-center gap-2 whitespace-nowrap px-4 py-2 text-sm hover:bg-white/5">
@@ -329,6 +355,8 @@ function Ticker({ itens }: { itens: ItemTicker[] }) {
           </li>
         ))}
       </ul>
+      </div>
+      <span aria-hidden className="pointer-events-none absolute inset-y-0 right-0 w-12 bg-gradient-to-l from-painel to-transparent" />
     </nav>
   )
 }
@@ -340,10 +368,12 @@ function Quadro({ titulo, sub, link, vazio, children }: {
     <section className="surgir grid min-w-0 content-start overflow-hidden rounded-xl border bg-card shadow-sm">
       <div className="flex items-start justify-between gap-2 border-b px-4 py-2.5">
         <div className="min-w-0">
-          <h2 className="text-sm font-semibold">{titulo}</h2>
-          <p className="truncate text-xs text-muted-foreground">{sub}</p>
+          <h2 className="text-[15px] font-semibold">{titulo}</h2>
+          <p className="truncate text-[13px] text-muted-foreground">{sub}</p>
         </div>
-        <Link href={link.href} className="shrink-0 text-xs text-muted-foreground underline hover:text-foreground">{link.rotulo}</Link>
+        <Link href={link.href} className="inline-flex min-h-8 shrink-0 items-center gap-1 rounded-md border bg-background px-2.5 text-xs font-medium hover:bg-muted">
+          {link.rotulo} <span aria-hidden>→</span>
+        </Link>
       </div>
       {vazio ? <p className="px-4 py-6 text-center text-sm text-muted-foreground">{vazio}</p> : children}
     </section>
