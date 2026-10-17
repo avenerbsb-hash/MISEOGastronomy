@@ -32,9 +32,9 @@ export function TabelaCustos({ linhas, rodape, variacoes }: {
           <tr>
             <th className="px-3 py-2">Componente</th>
             <th className="px-3 py-2 text-right">Quantidade</th>
-            <th className="px-3 py-2 text-right">Custo unitário</th>
+            <th className="hidden px-3 py-2 text-right sm:table-cell">Custo unitário</th>
             <th className="px-3 py-2 text-right">Custo</th>
-            <th className="px-3 py-2 text-right">%</th>
+            <th className="hidden px-3 py-2 text-right sm:table-cell">%</th>
             {variacoes ? <th className="px-3 py-2 text-right">Variação</th> : null}
           </tr>
         </thead>
@@ -45,11 +45,11 @@ export function TabelaCustos({ linhas, rodape, variacoes }: {
               <tr key={`${l.ordem}-${l.componente}`}>
                 <td className="px-3 py-2">{l.componente}{l.tipo === "subproduto" ? <span className="text-xs text-muted-foreground"> (subproduto)</span> : null}</td>
                 <td className="whitespace-nowrap px-3 py-2 text-right tabular-nums">{numero(l.quantidade)} {rotuloUnidade(l.unidade)}</td>
-                <td className="whitespace-nowrap px-3 py-2 text-right tabular-nums">
+                <td className="hidden whitespace-nowrap px-3 py-2 text-right tabular-nums sm:table-cell">
                   {l.custo_unitario_base == null ? <span className="text-destructive">sem preço</span> : custoPorUnidade(l.custo_unitario_base, l.unidade_base)}
                 </td>
                 <td className="whitespace-nowrap px-3 py-2 text-right tabular-nums">{l.custo == null ? "—" : reais(l.custo)}</td>
-                <td className="whitespace-nowrap px-3 py-2 text-right tabular-nums text-muted-foreground">{percentual(l.participacao_pct)}</td>
+                <td className="hidden whitespace-nowrap px-3 py-2 text-right tabular-nums text-muted-foreground sm:table-cell">{percentual(l.participacao_pct)}</td>
                 {variacoes ? (
                   <td className="whitespace-nowrap px-3 py-2 text-right">
                     {(() => {
