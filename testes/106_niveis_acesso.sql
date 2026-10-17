@@ -45,4 +45,9 @@ select pg_temp.ok('nível 0 tira o acesso à casa',
 -- volta o usuário de teste ao papel original
 insert into acessos_estabelecimento (user_id, estabelecimento_id, papel)
 select '00000000-0000-0000-0000-0000000000a3', '00000000-0000-0000-0000-0000000000e1', papel::papel_local from _antes;
+-- contagens com responsável (0023): a contagem do teste 105 feita pela produção (a3) aparece com o nome
+set request.jwt.claim.sub = '00000000-0000-0000-0000-0000000000a1';
+select pg_temp.ok('última contagem traz responsável, hora e itens',
+  (select responsavel is not null and feita_em is not null and itens >= 1
+     from ultimas_contagens('00000000-0000-0000-0000-0000000000e1', 1)));
 \echo '== NIVEIS OK'

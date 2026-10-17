@@ -2,7 +2,7 @@ import type { Metadata } from "next"
 import Link from "next/link"
 import { createClient } from "@/lib/supabase/server"
 import { exigirCasa, podeVerCustos } from "@/lib/sessao"
-import { dataCurta, numero } from "@/lib/formato"
+import { dataCurta, dataHora, numero } from "@/lib/formato"
 import { FormAcao, BotaoEnviar } from "@/components/form-acao"
 import { Entrada } from "@/components/campos"
 import { registrarContagem } from "../actions"
@@ -18,10 +18,12 @@ type Linha = {
 export default async function Contagem() {
   const s = await exigirCasa()
   const supabase = await createClient()
-  const [pedido, historico] = await Promise.all([
+  const [pedido, historico, comResponsavel] = await Promise.all([
     supabase.rpc("pedido_semanal", { p_estab: s.casa.id }),
     supabase.from("contagens_estoque").select("id, data, observacao, criado_em, contagem_itens(count)")
       .eq("estabelecimento_id", s.casa.id).order("data", { ascending: false }).order("criado_em", { ascending: false }).limit(10),
+    // com responsável e hora (0023); sem a migração, só data e itens
+    supabase.rpc("ultimas_contagens", { p_estab: s.casa.id, p_limite: 10 }),
   ])
   if (pedido.error) return <p className="text-sm text-muted-foreground">O controle de estoque ainda não está ativo nesta base (migração 0019).</p>
   const linhas = (pedido.data ?? []) as Linha[]
@@ -33,7 +35,12 @@ export default async function Contagem() {
     )
   }
   const grupos = [...new Set(linhas.map((l) => l.grupo))]
-  const contagens = (historico.data ?? []) as unknown as { id: string; data: string; observacao: string | null; contagem_itens: { count: number }[] }[]
+  type Hist = { id: string; data: string; feita_em: string | null; responsavel: string | null; observacao: string | null; itens: number }
+  const contagens: Hist[] = !comResponsavel.error
+    ? ((comResponsavel.data ?? []) as { contagem_id: string; data: string; feita_em: string; responsavel: string; observacao: string | null; itens: number }[])
+        .map((c) => ({ id: c.contagem_id, data: c.data, feita_em: c.feita_em, responsavel: c.responsavel, observacao: c.observacao, itens: c.itens }))
+    : ((historico.data ?? []) as unknown as { id: string; data: string; observacao: string | null; contagem_itens: { count: number }[] }[])
+        .map((c) => ({ id: c.id, data: c.data, feita_em: null, responsavel: null, observacao: c.observacao, itens: c.contagem_itens?.[0]?.count ?? 0 }))
 
   return (
     <div className="grid gap-4">
@@ -79,8 +86,12 @@ export default async function Contagem() {
           <ul className="divide-y rounded-xl border text-sm">
             {contagens.map((c) => (
               <li key={c.id} className="flex flex-wrap items-center justify-between gap-2 px-3 py-2">
-                <span>{dataCurta(c.data)}{c.observacao ? <span className="text-muted-foreground"> · {c.observacao}</span> : null}</span>
-                <span className="text-xs text-muted-foreground">{c.contagem_itens?.[0]?.count ?? 0} itens contados</span>
+                <span>
+                  {c.feita_em ? dataHora(c.feita_em).replace(", ", " às ") : dataCurta(c.data)}
+                  {c.responsavel ? <> · <b>{c.responsavel}</b></> : null}
+                  {c.observacao ? <span className="text-muted-foreground"> · {c.observacao}</span> : null}
+                </span>
+                <span className="text-xs text-muted-foreground">{c.itens} itens contados</span>
               </li>
             ))}
           </ul>

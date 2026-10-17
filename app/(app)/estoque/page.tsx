@@ -30,10 +30,12 @@ export default async function PedidoSemana({ searchParams }: { searchParams: Pro
   const todos = ver === "todos"
   const porFornecedor = agrupar === "fornecedor"
   const supabase = await createClient()
-  const [pedido, ranking] = await Promise.all([
+  const [pedido, ranking, contagens] = await Promise.all([
     supabase.rpc("pedido_semanal", { p_estab: s.casa.id }),
     // melhor fornecedor (0020); sem a migração, a coluna fica vazia
     supabase.rpc("melhores_fornecedores_estoque", { p_estab: s.casa.id, p_compras: COMPRAS_RANKING }),
+    // última contagem com responsável e hora (0023)
+    supabase.rpc("ultimas_contagens", { p_estab: s.casa.id, p_limite: 1 }),
   ])
   if (pedido.error) return <p className="text-sm text-muted-foreground">O controle de estoque ainda não está ativo nesta base (migração 0019).</p>
   const linhas = (pedido.data ?? []) as Linha[]
@@ -45,9 +47,13 @@ export default async function PedidoSemana({ searchParams }: { searchParams: Pro
   const total = aPedir.reduce((a, l) => a + Number(l.valor_estimado ?? 0), 0)
   const semValor = aPedir.filter((l) => l.valor_estimado == null).length
   const ultima = linhas.map((l) => l.data_contagem).filter((d): d is string => !!d).sort().at(-1) ?? null
+  const ult = ((contagens.data ?? []) as { feita_em: string; responsavel: string }[])[0]
+  // "17/10/2026 às 14:32 · por Éder" (sem a migração 0023: só a data)
+  const textoUltima = ult ? `${dataHora(ult.feita_em).replace(", ", " às ")} · por ${ult.responsavel}` : ultima ? dataCurta(ultima) : null
   const hoje = new Intl.DateTimeFormat("pt-BR", { timeZone: "America/Sao_Paulo" }).format(new Date())
   const texto = [
     `*Pedido de compra · ${s.casa.nome}* · ${hoje}`,
+    ...(textoUltima ? [`Última contagem: ${textoUltima}`] : []),
     ...[...new Set(aPedir.map(grupoDe))].flatMap((g) => [
       "",
       `*${porFornecedor ? g : g.split(" › ").at(-1)}*`,
@@ -92,7 +98,7 @@ export default async function PedidoSemana({ searchParams }: { searchParams: Pro
         <p className="text-muted-foreground">
           {aPedir.length} {aPedir.length === 1 ? "item" : "itens"} para pedir
           {custos && aPedir.length ? ` · estimado ${reais(total)}${semValor ? ` (+${semValor} sem preço)` : ""}` : ""}
-          {" · "}pedir = estoque mínimo − última contagem{ultima ? ` (${dataCurta(ultima)})` : ""}
+          {" · "}pedir = estoque mínimo − última contagem{textoUltima ? ` (${textoUltima})` : ""}
           {" · "}melhor fornecedor = menor preço médio nas últimas {COMPRAS_RANKING} compras
           {porFornecedor ? " · agrupado por fornecedor" : ""}
         </p>
@@ -109,7 +115,7 @@ export default async function PedidoSemana({ searchParams }: { searchParams: Pro
             <> · estimado <b className="tabular-nums">{reais(total)}</b>{semValor ? <span className="text-muted-foreground"> (+{semValor} sem preço)</span> : null}</>
           ) : null}
           <div className="text-xs text-muted-foreground">
-            Pedir = estoque mínimo − última contagem (depósito + bar){ultima ? ` · última contagem ${dataCurta(ultima)}` : " · ainda sem contagem"}
+            Pedir = estoque mínimo − última contagem (depósito + bar){textoUltima ? <> · última contagem <b className="text-foreground">{textoUltima}</b></> : " · ainda sem contagem"}
             {" · "}melhor fornecedor pelas últimas {COMPRAS_RANKING} compras
           </div>
         </div>
