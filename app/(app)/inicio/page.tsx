@@ -3,7 +3,7 @@ import Link from "next/link"
 import { AlertTriangle, BookOpen, Info, PackageX, PieChart, ShoppingCart, type LucideIcon } from "lucide-react"
 import { createClient } from "@/lib/supabase/server"
 import { exigirCustos } from "@/lib/sessao"
-import { alertasDaCasa, DIAS_ALERTA, indicadoresDaCasa } from "@/lib/dados"
+import { alertasDaCasa, DIAS_ALERTA, historicoCusto, indicadoresDaCasa, variacoesDasReceitas } from "@/lib/dados"
 import { custoPorUnidade, dataCurta, dataHora, hojeSP, nomeMes, percentual, reais, type Dimensao } from "@/lib/formato"
 import { SeloIndicador, pctPreciso } from "@/components/indicador-preco"
 import { Sparkline, tomDe, type Tom } from "@/components/sparkline"
@@ -41,7 +41,7 @@ const suspeita = (pct: number | null | undefined) => pct != null && (Number(pct)
 export default async function Inicio() {
   const s = await exigirCustos()
   const supabase = await createClient()
-  const [painel, casa, abertas, alertas, indicadores, usados, serie, oport] = await Promise.all([
+  const [painel, casa, abertas, alertas, indicadores, usados, serie, oport, variacoes] = await Promise.all([
     supabase.rpc("painel_cmv_casa", { p_estab: s.casa.id }),
     supabase.rpc("cmv_da_casa", { p_estab: s.casa.id }),
     supabase.rpc("conferencias_da_casa", { p_estab: s.casa.id, p_abertas: true, p_limite: 200 }),
@@ -51,6 +51,7 @@ export default async function Inicio() {
     // séries e oportunidades (0024): sem a migração, a tela segue sem os mini gráficos
     supabase.rpc("serie_mercado_casa", { p_estab: s.casa.id, p_semanas: SEMANAS, p_itens: 10 }),
     supabase.rpc("oportunidades_economia", { p_estab: s.casa.id }),
+    variacoesDasReceitas(s.casa.id, "final"),
   ])
 
   // insumos usados em fichas/preparos aprovados que ainda não têm preço nesta casa
@@ -62,6 +63,14 @@ export default async function Inicio() {
   const semCusto = linhas.filter((l) => l.situacao === "sem_custo").length
   const conferencias = abertas.error ? null : ((abertas.data ?? []) as Conferencia[])
   const fichasAlta = alertas.fichas.filter((f) => f.tipo === "final")
+  // fichas do cardápio com maior oscilação de custo (para cima ou para baixo) nos últimos dias
+  const noCardapio = new Map(linhas.map((l) => [l.receita_id, l]))
+  const limiteData = new Date(Date.parse(hojeSP()) - DIAS_ALERTA * 86400000).toISOString().slice(0, 10)
+  const afetadas = [...variacoes.values()]
+    .filter((v) => noCardapio.has(v.receita_id) && v.variacao_pct != null && v.sinal !== "neutro" && (v.data_referencia ?? "") >= limiteData)
+    .sort((a, b) => Math.abs(Number(b.variacao_pct)) - Math.abs(Number(a.variacao_pct)))
+    .slice(0, 6)
+  const historicos = new Map(await Promise.all(afetadas.map(async (v) => [v.receita_id, await historicoCusto(v.receita_id, s.casa.id)] as const)))
 
   // séries semanais (hoje = último ponto)
   const pontos = serie.error ? [] : ((serie.data ?? []) as Ponto[])
@@ -178,31 +187,35 @@ export default async function Inicio() {
           </Tabela>
         </Quadro>
 
-        {/* B — compras aguardando conferência */}
-        <Quadro titulo="Compras aguardando conferência" sub="última compra × custo validado anterior"
-          link={{ href: "/pendencias", rotulo: "Conferir em Compras" }}
-          vazio={conferencias == null ? "Conferência de compras indisponível." : conferencias.length ? null : "Nenhuma compra esperando conferência."}>
-          <Tabela cab={["Insumo", "Compra", "Anterior", "Atual", "Variação", "Risco", ""]} ocultar={[1, 2]}>
-            {(conferencias ?? []).slice(0, 6).map((c) => {
-              const alto = Number(c.variacao_pct) >= 2 * Number(c.limite_pct)
+        {/* B — fichas do cardápio mais afetadas pelas oscilações de preço de compra */}
+        <Quadro titulo="Fichas mais afetadas pelas compras" sub={`maior variação de custo nos últimos ${DIAS_ALERTA} dias · última compra que mudou o custo`}
+          link={{ href: `/alertas?dias=${DIAS_ALERTA}#fichas`, rotulo: "Ver alertas" }}
+          vazio={afetadas.length ? null : `Nenhuma ficha do cardápio mudou de custo nos últimos ${DIAS_ALERTA} dias.`}>
+          <Tabela cab={["Ficha", "Antes", "Agora", "Variação", "CMV", "Oscilação"]} ocultar={[1, 4]}>
+            {afetadas.map((v) => {
+              const h = historicos.get(v.receita_id) ?? []
+              const l = noCardapio.get(v.receita_id)
               return (
-                <tr key={c.id} className="hover:bg-muted/40">
+                <tr key={v.receita_id} className="hover:bg-muted/40">
                   <td className="max-w-0 px-3 py-2">
-                    <Link href="/pendencias" className="block truncate font-medium hover:underline">{c.insumo}</Link>
-                    <span className="block truncate text-[13px] text-muted-foreground">{c.fornecedor ?? "fornecedor não informado"}</span>
+                    <Link href={`/fichas/${v.receita_id}`} className="block truncate font-medium hover:underline">{v.nome}</Link>
+                    <span className="block truncate text-[13px] text-muted-foreground" title={h.at(-1)?.insumos}>
+                      {dataCurta(v.data_referencia)}{h.at(-1)?.insumos ? ` · ${h.at(-1)!.insumos}` : ""}
+                    </span>
                   </td>
+                  <td className="hidden whitespace-nowrap px-3 py-2 text-right tabular-nums text-muted-foreground sm:table-cell">{reais(v.custo_anterior)}</td>
+                  <td className="whitespace-nowrap px-3 py-2 text-right tabular-nums">{reais(v.custo_atual)}</td>
+                  <td className="px-3 py-2 text-right"><Pilula tom={v.sinal === "vermelho" ? "alta" : v.sinal === "verde" ? "queda" : "neutro"}>
+                    {v.sinal === "vermelho" ? "▲" : "▼"} {pctPreciso(v.variacao_pct!)}
+                  </Pilula></td>
                   <td className="hidden px-3 py-2 text-right sm:table-cell">
-                    <span className="block whitespace-nowrap tabular-nums">{dataCurta(c.data_compra)}</span>
-                    <span className={cn("block whitespace-nowrap text-xs", dias(c.data_compra) > 30 ? "font-semibold text-alta" : "text-muted-foreground")}>há {dias(c.data_compra)} dias</span>
+                    {l?.cmv_atual_pct != null
+                      ? <span className={cn("text-xs font-semibold tabular-nums", l.situacao === "acima_da_meta" ? "text-alta" : "text-queda")}>{percentual(l.cmv_atual_pct)}</span>
+                      : <span className="text-xs text-muted-foreground">—</span>}
                   </td>
-                  <td className="hidden whitespace-nowrap px-3 py-2 text-right tabular-nums text-muted-foreground sm:table-cell">{custoPorUnidade(c.custo_referencia, c.dimensao)}</td>
-                  <td className="whitespace-nowrap px-3 py-2 text-right tabular-nums">{custoPorUnidade(c.custo_novo, c.dimensao)}</td>
-                  <td className="whitespace-nowrap px-3 py-2 text-right font-semibold tabular-nums text-alta">▲ {pctPreciso(c.variacao_pct)}</td>
-                  <td className="px-3 py-2 text-right" title={`limite da casa ${percentual(c.limite_pct)}`}>
-                    <Pilula tom={alto ? "alta" : "neutro"}>{alto ? "Alto" : "Moderado"}</Pilula>
-                  </td>
-                  <td className="px-2 py-2 text-right">
-                    <Link href="/pendencias" className="inline-flex min-h-8 items-center rounded-md border bg-background px-2 text-xs font-medium hover:bg-muted">Conferir</Link>
+                  <td className="w-24 px-3 py-2">
+                    <Sparkline valores={h.slice(-10).map((p) => p.custo)} tom={v.sinal === "vermelho" ? "alta" : "queda"}
+                      falta="1 alteração" rotulo={`Custo de ${v.nome} nas últimas alterações`} />
                   </td>
                 </tr>
               )
@@ -287,11 +300,6 @@ function delta(v: number | null | undefined, sufixo = ""): string | undefined {
   if (n === 0) return "= estável"
   const txt = new Intl.NumberFormat("pt-BR", { maximumFractionDigits: 1 }).format(Math.abs(n))
   return `${n > 0 ? "▲ +" : "▼ −"}${txt}${sufixo}`
-}
-
-// dias desde a data da compra (calendário de São Paulo)
-function dias(data: string): number {
-  return Math.max(0, Math.round((Date.parse(hojeSP()) - Date.parse(data.slice(0, 10))) / 86400000))
 }
 
 // primeiros dias dos últimos n meses (calendário de São Paulo), do mais antigo para o atual

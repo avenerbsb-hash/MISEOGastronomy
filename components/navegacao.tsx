@@ -32,12 +32,17 @@ function Itens({ itens, recolhido, aoEscolher }: { itens: ItemMenu[]; recolhido:
               recolhido && "justify-center px-0",
               ativo ? "bg-white/12 text-white shadow-[inset_3px_0_0_var(--painel-queda)]" : "text-white/65 hover:bg-white/8 hover:text-white",
             )}>
-            <Icone className="size-5 shrink-0" aria-hidden />
+            <span className="relative shrink-0">
+              <Icone className="size-5" aria-hidden />
+              {i.contador ? (
+                <span className="absolute -right-2.5 -top-2 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-alta px-1 text-[10px] font-bold leading-none tabular-nums text-white ring-2 ring-painel"
+                  title={`${i.contador} compras para conferir`}>
+                  {i.contador > 99 ? "99+" : i.contador}
+                  <span className="sr-only"> compras para conferir</span>
+                </span>
+              ) : null}
+            </span>
             {recolhido ? <span className="sr-only">{i.rotulo}</span> : <span className="truncate">{i.rotulo}</span>}
-            {i.contador ? (
-              <span className={cn("rounded-full bg-alta px-1.5 py-0.5 text-[11px] font-semibold tabular-nums text-white", recolhido ? "absolute ml-6 -mt-6" : "ml-auto")}
-                title={`${i.contador} para conferir`}>{i.contador}</span>
-            ) : null}
           </Link>
         )
       })}
