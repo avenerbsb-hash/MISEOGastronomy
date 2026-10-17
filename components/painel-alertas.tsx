@@ -6,26 +6,45 @@ import { cn } from "@/lib/utils"
 
 // Tela de alertas de aumento: só exibe o que alertas_insumos / alertas_fichas calcularam no banco
 export const PERIODOS = [30, 60, 90]
+// Organização das listas (insumos e fichas)
+export const ORDENS_ALERTA = {
+  relevancia: { rotulo: "Relevância", dica: "o que afeta fichas primeiro, depois a maior alta" },
+  alta: { rotulo: "Maior alta", dica: "maior alta primeiro" },
+  recente: { rotulo: "Mais recente", dica: "compra mais recente primeiro" },
+  impacto: { rotulo: "Mais fichas afetadas / maior CMV", dica: "insumos: mais fichas afetadas; fichas: maior CMV" },
+  nome: { rotulo: "Nome (A–Z)", dica: "ordem alfabética" },
+} as const
+export type OrdemAlerta = keyof typeof ORDENS_ALERTA
+const porNome = (a: string, b: string) => a.localeCompare(b, "pt-BR")
 
 const plural = (n: number, um: string, varios: string) => `${n} ${n === 1 ? um : varios}`
 // colunas no computador
 const COL_INSUMO = "md:grid-cols-[minmax(0,1.3fr)_6.5rem_6.5rem_6rem_5rem_minmax(0,1.5fr)]"
 const COL_FICHA = "md:grid-cols-[minmax(0,1.5fr)_6.5rem_6.5rem_6rem_9rem_6rem]"
 
-export function PainelAlertas({ insumos, fichas, dias, erro = false, meta = 30, uso = "" }: {
-  insumos: AlertaInsumo[]; fichas: AlertaFicha[]; dias: number; casa?: string; erro?: boolean; meta?: number; uso?: string
+export function PainelAlertas({ insumos, fichas, dias, erro = false, meta = 30, uso = "", ordem = "relevancia" }: {
+  insumos: AlertaInsumo[]; fichas: AlertaFicha[]; dias: number; casa?: string; erro?: boolean; meta?: number; uso?: string; ordem?: OrdemAlerta
 }) {
   const finais = fichas.filter((f) => f.tipo === "final")
   const subprodutos = fichas.filter((f) => f.tipo === "subproduto")
   const usados = insumos.filter((a) => a.qtd_fichas + a.qtd_subprodutos > 0)
-  // primeiro os que afetam fichas, depois os demais; dentro de cada grupo, a maior alta primeiro
-  const ordenados = [...(uso === "fichas" ? usados : insumos)].sort((a, b) =>
-    Number(b.qtd_fichas + b.qtd_subprodutos > 0) - Number(a.qtd_fichas + a.qtd_subprodutos > 0) || Number(b.variacao_pct) - Number(a.variacao_pct))
-  const link = (mudar: { dias?: number; uso?: string }) => {
+  const qtd = (a: AlertaInsumo) => a.qtd_fichas + a.qtd_subprodutos
+  const ordenados = [...(uso === "fichas" ? usados : insumos)].sort((a, b) => {
+    const alta = Number(b.variacao_pct) - Number(a.variacao_pct)
+    switch (ordem) {
+      case "alta": return alta
+      case "recente": return b.data_referencia.localeCompare(a.data_referencia) || alta
+      case "impacto": return qtd(b) - qtd(a) || alta
+      case "nome": return porNome(a.insumo, b.insumo)
+      default: return Number(qtd(b) > 0) - Number(qtd(a) > 0) || alta
+    }
+  })
+  const link = (mudar: { dias?: number; uso?: string; ordem?: string }) => {
     const p = new URLSearchParams()
-    const d = mudar.dias ?? dias, u = mudar.uso ?? uso
+    const d = mudar.dias ?? dias, u = mudar.uso ?? uso, o = mudar.ordem ?? ordem
     if (d !== DIAS_ALERTA) p.set("dias", String(d))
     if (u) p.set("uso", u)
+    if (o !== "relevancia") p.set("ordem", o)
     const qs = p.toString()
     return qs ? `/alertas?${qs}` : "/alertas"
   }
@@ -54,7 +73,17 @@ export function PainelAlertas({ insumos, fichas, dias, erro = false, meta = 30, 
         <Resumo numero={subprodutos.length} rotulo={subprodutos.length === 1 ? "preparo subiu" : "preparos subiram"} href="#subprodutos" />
       </div>
 
-      <Secao id="insumos" titulo="Insumos" descricao="Última compra validada contra a anterior. Os que afetam fichas aparecem primeiro.">
+      <nav aria-label="Organizar" className="flex flex-wrap items-center gap-1.5 text-sm">
+        <span className="text-muted-foreground">Organizar por:</span>
+        {(Object.keys(ORDENS_ALERTA) as OrdemAlerta[]).map((o) => (
+          <Link key={o} href={link({ ordem: o })} aria-current={ordem === o ? "page" : undefined} title={ORDENS_ALERTA[o].dica}
+            className={cn("inline-flex min-h-11 items-center rounded-full border px-3", ordem === o ? "border-foreground bg-foreground text-background" : "hover:bg-muted")}>
+            {ORDENS_ALERTA[o].rotulo}
+          </Link>
+        ))}
+      </nav>
+
+      <Secao id="insumos" titulo="Insumos" descricao={`Última compra validada contra a anterior · ${ORDENS_ALERTA[ordem].dica}.`}>
         <div className="flex flex-wrap gap-1.5">
           <Link href={link({ uso: "" })} aria-current={!uso ? "page" : undefined}
             className={cn("inline-flex min-h-11 items-center gap-1.5 rounded-full border px-3 text-sm", !uso ? "border-foreground bg-foreground text-background" : "hover:bg-muted")}>
@@ -111,11 +140,11 @@ export function PainelAlertas({ insumos, fichas, dias, erro = false, meta = 30, 
       </Secao>
 
       <Secao id="fichas" titulo="Fichas técnicas" descricao={`Custo da porção antes e depois da última compra e o CMV (vermelho acima da meta de ${percentual(meta)}).`}>
-        {finais.length === 0 ? <Vazio texto={`Nenhuma ficha técnica subiu mais de ${LIMITE_ALERTA}% nos últimos ${dias} dias.`} /> : <ListaFichas itens={finais} meta={meta} />}
+        {finais.length === 0 ? <Vazio texto={`Nenhuma ficha técnica subiu mais de ${LIMITE_ALERTA}% nos últimos ${dias} dias.`} /> : <ListaFichas itens={finais} meta={meta} ordem={ordem} />}
       </Secao>
 
       <Secao id="subprodutos" titulo="Preparos e bases" descricao="Xaropes, cordiais, pré-batches… A alta deles também chega às fichas que os usam.">
-        {subprodutos.length === 0 ? <Vazio texto={`Nenhum preparo subiu mais de ${LIMITE_ALERTA}% nos últimos ${dias} dias.`} /> : <ListaFichas itens={subprodutos} meta={meta} />}
+        {subprodutos.length === 0 ? <Vazio texto={`Nenhum preparo subiu mais de ${LIMITE_ALERTA}% nos últimos ${dias} dias.`} /> : <ListaFichas itens={subprodutos} meta={meta} ordem={ordem} />}
       </Secao>
     </div>
   )
@@ -154,13 +183,19 @@ function Vazio({ texto }: { texto: string }) {
   return <p className="rounded-xl border border-dashed p-4 text-center text-sm text-muted-foreground">{texto}</p>
 }
 
-function ListaFichas({ itens, meta }: { itens: AlertaFicha[]; meta: number }) {
+function ListaFichas({ itens, meta, ordem }: { itens: AlertaFicha[]; meta: number; ordem: OrdemAlerta }) {
   const final = itens[0]?.tipo === "final"
   return (
     <div className="overflow-hidden rounded-xl border">
       <Cabecalho colunas={COL_FICHA} titulos={final ? ["Ficha", "Antes", "Agora", "Alta", "CMV", "Preço"] : ["Preparo", "Antes", "Agora", "Alta", "", ""]} />
       <ul className="divide-y">
-        {[...itens].sort((a, b) => Number(b.variacao_pct) - Number(a.variacao_pct)).map((f) => {
+        {[...itens].sort((a, b) => {
+          const alta = Number(b.variacao_pct) - Number(a.variacao_pct)
+          if (ordem === "recente") return b.data_referencia.localeCompare(a.data_referencia) || alta
+          if (ordem === "impacto") return Number(b.cmv_atual_pct ?? -1) - Number(a.cmv_atual_pct ?? -1) || alta
+          if (ordem === "nome") return porNome(a.nome, b.nome)
+          return alta
+        }).map((f) => {
           const ehFinal = f.tipo === "final"
           const valor = (v: number) => (ehFinal ? reais(v) : custoPorUnidade(v, f.dimensao))
           const acima = Number(f.cmv_atual_pct) > meta
