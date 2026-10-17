@@ -6,20 +6,42 @@ import { FormLimites, type LimiteGrupo } from "@/components/form-limites"
 import { NOMES_GRUPO, type Grupo } from "@/components/alertas-niveis"
 import { createClient } from "@/lib/supabase/server"
 import { enviarLogo, removerLogo, salvarLimites } from "./actions"
+import { salvarParametros } from "../casas/actions"
+import { Campo, Entrada, Selecao } from "@/components/campos"
+import { REGRAS } from "@/lib/regras-preco"
 
 export const metadata: Metadata = { title: "Dados da casa" }
 
-// Dados da casa (gestor/admin): logo do topo e dos PDFs e limites dos alertas das fichas
+// Dados da casa (gestor/admin): meta de CMV, arredondamento, logo do topo e dos PDFs e limites dos alertas das fichas
 export default async function DadosCasa() {
   const s = await exigirCustos()
   const supabase = await createClient()
-  const { data: limites, error: semLimites } = await supabase.rpc("limites_alerta_casa", { p_estab: s.casa.id })
+  const [{ data: limites, error: semLimites }, { data: params }] = await Promise.all([
+    supabase.rpc("limites_alerta_casa", { p_estab: s.casa.id }),
+    supabase.from("estabelecimentos").select("cmv_alvo_padrao, regra_arredondamento").eq("id", s.casa.id).maybeSingle(),
+  ])
   return (
     <div className="grid max-w-3xl gap-4">
       <div>
         <h1 className="text-xl font-semibold">Dados da casa</h1>
         <p className="text-sm text-muted-foreground">{s.casa.nome}</p>
       </div>
+      <section className="grid gap-3 rounded-xl border p-4">
+        <h2 className="text-base font-semibold">Meta de CMV e arredondamento</h2>
+        <FormAcao acao={salvarParametros} limparAoSalvar={false}>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <Campo rotulo="Meta de CMV (%)" dica="CMV acima dela fica vermelho no painel, no Início e nos alertas.">
+              <Entrada name="meta" required inputMode="decimal" defaultValue={String(params?.cmv_alvo_padrao ?? 30).replace(".", ",")} />
+            </Campo>
+            <Campo rotulo="Arredondamento do preço sugerido">
+              <Selecao name="regra" defaultValue={params?.regra_arredondamento ?? "centavos"}>
+                {REGRAS.map((r) => <option key={r.valor} value={r.valor}>{r.rotulo}</option>)}
+              </Selecao>
+            </Campo>
+          </div>
+          <div><BotaoEnviar className="h-10">Salvar</BotaoEnviar></div>
+        </FormAcao>
+      </section>
       <section className="grid gap-3 rounded-xl border p-4">
         <h2 className="text-base font-semibold">Logo</h2>
         <p className="text-sm text-muted-foreground">Aparece no topo do sistema e nos PDFs (pedido de compra, painel de CMV e relatório de insumos) desta casa.</p>

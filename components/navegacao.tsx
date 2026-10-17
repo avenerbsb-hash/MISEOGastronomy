@@ -5,7 +5,7 @@ import { createPortal } from "react-dom"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import {
-  Bell, BookOpen, Boxes, ChefHat, ClipboardList, Store, Users, ChevronsLeft, ChevronsRight, House, Menu as IconeMenu, Package, PieChart, ShoppingCart, X,
+  Bell, BookOpen, Boxes, Building2, ChefHat, ClipboardList, Store, Users, ChevronsLeft, ChevronsRight, House, Menu as IconeMenu, Package, PieChart, ShoppingCart, X,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 
@@ -13,7 +13,7 @@ export type ItemMenu = { href: string; rotulo: string; contador?: number; aviso?
 
 const ICONES: Record<string, typeof House> = {
   "/inicio": House, "/cmv": PieChart, "/fichas": BookOpen, "/subprodutos": ChefHat,
-  "/insumos": Package, "/pendencias": ShoppingCart, "/estoque": Boxes, "/estoque/contagem": ClipboardList, "/alertas": Bell, "/casa": Store, "/usuarios": Users,
+  "/insumos": Package, "/pendencias": ShoppingCart, "/estoque": Boxes, "/estoque/contagem": ClipboardList, "/alertas": Bell, "/casa": Store, "/casas": Building2, "/usuarios": Users,
 }
 const CHAVE = "miseo_menu_recolhido"
 

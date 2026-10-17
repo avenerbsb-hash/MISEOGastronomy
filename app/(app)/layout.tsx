@@ -37,7 +37,7 @@ export default async function LayoutApp({ children }: { children: React.ReactNod
         { href: "/estoque", rotulo: "Estoque", contador: pedidoPendente, aviso: avisoEstoque },
         { href: "/alertas", rotulo: "Alertas" },
         { href: "/casa", rotulo: "Dados da casa" },
-        ...(s.admin ? [{ href: "/usuarios", rotulo: "Usuários" }] : []),
+        ...(s.admin ? [{ href: "/casas", rotulo: "Casas" }, { href: "/usuarios", rotulo: "Usuários" }] : []),
       ]
     : s.papel === "gerente" ? [{ href: "/cmv", rotulo: "CMV" }, { href: "/fichas", rotulo: "Fichas técnicas" }, { href: "/estoque", rotulo: "Estoque", contador: pedidoPendente, aviso: avisoEstoque }]
     : s.papel === "contagem" ? [{ href: "/estoque/contagem", rotulo: "Contagem" }]

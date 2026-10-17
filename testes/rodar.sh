@@ -33,6 +33,7 @@ $P -d aceite -f testes/104_previa_compra.sql 2>&1 | filtro
 $P -d aceite -f testes/105_estoque.sql 2>&1 | filtro
 $P -d aceite -f testes/106_niveis_acesso.sql 2>&1 | filtro
 $P -d aceite -f testes/107_pedido_emitido.sql 2>&1 | filtro
+$P -d aceite -f testes/108_cadastro_casas.sql 2>&1 | filtro
 $P -d seed -f supabase/seed/01_insumos_giuli.sql 2>&1 | filtro
 $P -d seed -f testes/20_seed_giuli.sql 2>&1 | filtro
 $P -d seed -f supabase/seed/03_categorias.sql >/dev/null
