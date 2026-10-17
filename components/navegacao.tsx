@@ -30,7 +30,7 @@ function Itens({ itens, recolhido, aoEscolher }: { itens: ItemMenu[]; recolhido:
             className={cn(
               "flex min-h-11 items-center gap-3 rounded-lg px-3 text-sm font-medium transition-colors",
               recolhido && "justify-center px-0",
-              ativo ? "bg-foreground text-background" : "text-muted-foreground hover:bg-muted hover:text-foreground",
+              ativo ? "bg-white/12 text-white shadow-[inset_3px_0_0_var(--painel-queda)]" : "text-white/65 hover:bg-white/8 hover:text-white",
             )}>
             <Icone className="size-5 shrink-0" aria-hidden />
             {recolhido ? <span className="sr-only">{i.rotulo}</span> : <span className="truncate">{i.rotulo}</span>}
@@ -53,11 +53,11 @@ export function MenuLateral({ itens }: { itens: ItemMenu[] }) {
     setRecolhido((r) => { try { localStorage.setItem(CHAVE, r ? "0" : "1") } catch {} return !r })
   }
   return (
-    <aside className={cn("sticky top-14 hidden h-[calc(100dvh-3.5rem)] shrink-0 flex-col justify-between border-r px-2 py-3 md:flex print:hidden",
+    <aside className={cn("sticky top-14 hidden h-[calc(100dvh-3.5rem)] shrink-0 flex-col justify-between bg-painel px-2 py-3 text-white md:flex print:hidden",
       recolhido ? "w-16" : "w-56")}>
       <Itens itens={itens} recolhido={recolhido} />
       <button type="button" onClick={alternar} aria-label={recolhido ? "Abrir menu" : "Recolher menu"}
-        className="flex min-h-11 items-center justify-center gap-2 rounded-lg text-sm text-muted-foreground hover:bg-muted hover:text-foreground">
+        className="flex min-h-11 items-center justify-center gap-2 rounded-lg text-sm text-white/60 hover:bg-white/8 hover:text-white">
         {recolhido ? <ChevronsRight className="size-5" /> : <><ChevronsLeft className="size-5" /> Recolher menu</>}
       </button>
     </aside>
@@ -87,12 +87,12 @@ export function MenuCelular({ itens }: { itens: ItemMenu[] }) {
       {aberto ? createPortal(
         <div className="fixed inset-0 z-50" role="dialog" aria-modal="true" aria-label="Menu">
           <button type="button" aria-label="Fechar menu" onClick={() => setAberto(false)} className="absolute inset-0 bg-black/40" />
-          <div id="menu-celular" className="absolute inset-y-0 left-0 flex w-72 max-w-[85vw] flex-col gap-3 bg-background p-3 shadow-xl"
+          <div id="menu-celular" className="absolute inset-y-0 left-0 flex w-72 max-w-[85vw] flex-col gap-3 bg-painel p-3 text-white shadow-xl"
             style={{ paddingTop: "max(0.75rem, env(safe-area-inset-top))" }}>
             <div className="flex items-center justify-between">
               <span className="px-2 font-semibold tracking-wide">MISEO</span>
               <button type="button" onClick={() => setAberto(false)} aria-label="Fechar menu"
-                className="flex min-h-11 min-w-11 items-center justify-center rounded-lg hover:bg-muted"><X className="size-5" /></button>
+                className="flex min-h-11 min-w-11 items-center justify-center rounded-lg hover:bg-white/10"><X className="size-5" /></button>
             </div>
             <Itens itens={itens} recolhido={false} aoEscolher={() => setAberto(false)} />
           </div>

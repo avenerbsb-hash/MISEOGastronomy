@@ -5,6 +5,9 @@
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
+  --color-painel: var(--painel);
+  --color-painel-alta: var(--painel-alta);
+  --color-painel-queda: var(--painel-queda);
   --color-background: var(--background);
   --color-alta: var(--alta);
   --color-alta-fundo: var(--alta-fundo);
@@ -62,6 +65,10 @@
   --queda-fundo: #DCF3E5;
   --neutro: #5F6B76;
   --neutro-fundo: #EEF1F4;
+  /* menu lateral e faixa do Início (azul-marinho); vermelho/verde mais claros para ler sobre o fundo escuro */
+  --painel: #0B1B33;
+  --painel-alta: #FF6B78;
+  --painel-queda: #3DD68C;
   --background: oklch(1 0 0);
   --foreground: oklch(0.145 0 0);
   --card: oklch(1 0 0);
@@ -151,3 +158,8 @@
 }
 /* Celular: texto longo (truncate) não alarga a página — itens de grid podem encolher */
 main :where(.grid) > * { min-width: 0; }
+
+/* Início: indicadores surgem de leve ao carregar (sem animação contínua) */
+@keyframes surgir { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+.surgir { animation: surgir 0.35s ease-out both; }
+@media (prefers-reduced-motion: reduce) { .surgir { animation: none; } }
