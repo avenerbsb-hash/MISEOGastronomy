@@ -4,7 +4,7 @@ import { cookies } from "next/headers"
 import { redirect } from "next/navigation"
 import { createClient } from "@/lib/supabase/server"
 
-export type Papel = "admin" | "gestor" | "producao"
+export type Papel = "admin" | "gestor" | "producao" | "estoquista" | "contagem"
 export type Casa = { id: string; nome: string; papel: Papel }
 export type Sessao = {
   userId: string
@@ -71,7 +71,22 @@ export function podeVerCustos(s: Sessao): boolean {
 export async function exigirCustos(): Promise<Sessao & { casa: Casa }> {
   const s = await obterSessao()
   if (!s.casa) redirect("/sem-acesso")
-  if (!podeVerCustos(s)) redirect("/subprodutos")
+  if (!podeVerCustos(s)) redirect(inicioDoPapel(s))
+  return s as Sessao & { casa: Casa }
+}
+
+// Tela inicial de cada papel: contagem só conta; estoquista vê o pedido e conta
+export function inicioDoPapel(s: Sessao): string {
+  if (s.papel === "contagem") return "/estoque/contagem"
+  if (s.papel === "estoquista") return "/estoque"
+  return podeVerCustos(s) ? "/inicio" : "/subprodutos"
+}
+
+// Fichas e preparos: quem é só do estoque volta para a sua tela
+export async function exigirProducao(): Promise<Sessao & { casa: Casa }> {
+  const s = await obterSessao()
+  if (!s.casa) redirect("/sem-acesso")
+  if (s.papel === "contagem" || s.papel === "estoquista") redirect(inicioDoPapel(s))
   return s as Sessao & { casa: Casa }
 }
 

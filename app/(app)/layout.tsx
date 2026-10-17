@@ -24,8 +24,11 @@ export default async function LayoutApp({ children }: { children: React.ReactNod
         { href: "/subprodutos", rotulo: "Preparos e bases" },
         { href: "/insumos", rotulo: "Insumos" },
         { href: "/pendencias", rotulo: "Compras", contador: conferir },
+        { href: "/estoque", rotulo: "Estoque" },
         { href: "/alertas", rotulo: "Alertas" },
       ]
+    : s.papel === "contagem" ? [{ href: "/estoque/contagem", rotulo: "Contagem" }]
+    : s.papel === "estoquista" ? [{ href: "/estoque", rotulo: "Estoque" }]
     : [{ href: "/subprodutos", rotulo: "Preparos e bases" }, { href: "/fichas", rotulo: "Fichas técnicas" }]
 
   return (

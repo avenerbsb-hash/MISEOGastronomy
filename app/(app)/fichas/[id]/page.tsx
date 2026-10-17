@@ -1,6 +1,6 @@
 import Link from "next/link"
 import { createClient } from "@/lib/supabase/server"
-import { exigirCasa, podeVerCustos } from "@/lib/sessao"
+import { exigirProducao, podeVerCustos } from "@/lib/sessao"
 import { percentual, reais } from "@/lib/formato"
 import { FichaProducao, type LinhaProducao } from "@/components/ficha-producao"
 import { TabelaCustos, type LinhaGerencial } from "@/components/tabela-custos"
@@ -13,7 +13,7 @@ import { HistoricoCusto } from "@/components/historico-custo"
 import { AvisoRascunho } from "@/components/aviso-rascunho"
 
 export default async function FichaFinal({ params }: { params: Promise<{ id: string }> }) {
-  const s = await exigirCasa()
+  const s = await exigirProducao()
   const { id } = await params
   const supabase = await createClient()
   const { data: producao } = await supabase.from("vw_ficha_producao").select("*").eq("receita_id", id).order("ordem")

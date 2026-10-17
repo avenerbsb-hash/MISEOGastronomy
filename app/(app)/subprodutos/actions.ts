@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache"
 import { redirect } from "next/navigation"
 import { z } from "zod"
 import { createClient } from "@/lib/supabase/server"
-import { exigirCasa, exigirCustos } from "@/lib/sessao"
+import { exigirProducao, exigirCustos } from "@/lib/sessao"
 import { traduzirErro } from "@/lib/erros"
 import { decimal, opcional, texto } from "@/lib/esquemas"
 import type { Estado } from "@/components/form-acao"
@@ -223,7 +223,7 @@ const esquemaLote = z.object({
 })
 
 export async function registrarLote(versaoId: string, receitaId: string, _: Estado, dados: FormData): Promise<Estado> {
-  const s = await exigirCasa()
+  const s = await exigirProducao()
   const v = esquemaLote.safeParse({
     fator_escala: dados.get("fator_escala") || "1",
     quantidade_obtida: dados.get("quantidade_obtida"),

@@ -1,7 +1,7 @@
 import type { Metadata } from "next"
 import Link from "next/link"
 import { createClient } from "@/lib/supabase/server"
-import { exigirCasa, podeVerCustos } from "@/lib/sessao"
+import { exigirProducao, podeVerCustos } from "@/lib/sessao"
 import { custoPorUnidade, NOME_DIMENSAO, type Dimensao } from "@/lib/formato"
 import { buttonVariants } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -18,7 +18,7 @@ type Receita = {
 }
 
 export default async function Subprodutos({ searchParams }: { searchParams: Promise<{ q?: string }> }) {
-  const s = await exigirCasa()
+  const s = await exigirProducao()
   const custos = podeVerCustos(s)
   const { q = "" } = await searchParams
   const supabase = await createClient()

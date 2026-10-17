@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server"
-import { exigirCasa } from "@/lib/sessao"
+import { exigirProducao } from "@/lib/sessao"
 import { dataHora, numero, percentual, rotuloUnidade, UNIDADES_POR_DIMENSAO, type Dimensao } from "@/lib/formato"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { FormAcao, BotaoEnviar } from "@/components/form-acao"
@@ -13,7 +13,7 @@ type Lote = {
 
 // Rendimento real x padrão. Nenhum valor em R$ nesta tela (vale para produção).
 export default async function Lotes({ params }: { params: Promise<{ id: string }> }) {
-  const s = await exigirCasa()
+  const s = await exigirProducao()
   const { id } = await params
   const supabase = await createClient()
   const [{ data: receita }, { data: vigente }, rel] = await Promise.all([

@@ -1,7 +1,7 @@
 import Link from "next/link"
 import { notFound } from "next/navigation"
 import { createClient } from "@/lib/supabase/server"
-import { exigirCasa, podeVerCustos } from "@/lib/sessao"
+import { exigirProducao, podeVerCustos } from "@/lib/sessao"
 import { Abas } from "@/components/abas"
 import { buttonVariants } from "@/components/ui/button"
 import { MoreHorizontal } from "lucide-react"
@@ -11,7 +11,7 @@ import { excluirFicha, restaurarFicha } from "../actions"
 export default async function LayoutFicha({
   children, params,
 }: { children: React.ReactNode; params: Promise<{ id: string }> }) {
-  const s = await exigirCasa()
+  const s = await exigirProducao()
   const { id } = await params
   const supabase = await createClient()
   const { data: r } = await supabase.from("receitas").select("codigo, nome, tipo, ativo").eq("id", id).maybeSingle()

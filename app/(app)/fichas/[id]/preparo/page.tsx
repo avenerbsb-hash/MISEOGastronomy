@@ -1,11 +1,11 @@
 import Link from "next/link"
 import { createClient } from "@/lib/supabase/server"
-import { exigirCasa } from "@/lib/sessao"
+import { exigirProducao } from "@/lib/sessao"
 import { FichaProducao, type LinhaProducao } from "@/components/ficha-producao"
 
 // Preparo: ingredientes, quantidades, etapas, rendimento e apresentação (sem valores em R$)
 export default async function PreparoFicha({ params }: { params: Promise<{ id: string }> }) {
-  await exigirCasa()
+  await exigirProducao()
   const { id } = await params
   const supabase = await createClient()
   const { data } = await supabase.from("vw_ficha_producao").select("*").eq("receita_id", id).order("ordem")

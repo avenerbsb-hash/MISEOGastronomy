@@ -1,7 +1,7 @@
 import type { Metadata } from "next"
 import Link from "next/link"
 import { createClient } from "@/lib/supabase/server"
-import { exigirCasa, podeVerCustos } from "@/lib/sessao"
+import { exigirProducao, podeVerCustos } from "@/lib/sessao"
 import { categorias, nomesCategorias } from "@/lib/dados"
 import { percentual, reais } from "@/lib/formato"
 import { Badge } from "@/components/ui/badge"
@@ -39,7 +39,7 @@ function grupoDa(categoria: string | undefined): string {
 }
 
 export default async function Fichas({ searchParams }: { searchParams: Promise<{ ordem?: string; q?: string; tipo?: string; cardapio?: string; excluidas?: string }> }) {
-  const s = await exigirCasa()
+  const s = await exigirProducao()
   const custos = podeVerCustos(s)
   const { ordem, q = "", tipo: tipoBruto = "", cardapio = "", excluidas = "" } = await searchParams
   const verExcluidas = excluidas === "sim"
