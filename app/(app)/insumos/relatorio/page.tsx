@@ -1,4 +1,5 @@
 import type { Metadata } from "next"
+import { LogoCasa } from "@/components/logo-casa"
 import Link from "next/link"
 import { exigirCustos, obterSessao } from "@/lib/sessao"
 import { custoPorUnidade, dataCurta, dataHora, hojeSP } from "@/lib/formato"
@@ -37,7 +38,7 @@ export default async function RelatorioInsumos({ searchParams }: { searchParams:
 
       <header className="grid gap-1 border-b pb-3">
         <div className="flex flex-wrap items-baseline justify-between gap-2">
-          <h1 className="text-xl font-semibold print:text-lg">Relatório de insumos · {s.casa.nome}</h1>
+          <div className="flex items-center gap-3"><LogoCasa url={s.casa.logo} nome={s.casa.nome} className="h-12" /><h1 className="text-xl font-semibold print:text-lg">Relatório de insumos · {s.casa.nome}</h1></div>
           <span className="text-muted-foreground">MISEO · gerado em {dataHora(new Date().toISOString())}</span>
         </div>
         <p className="text-muted-foreground">

@@ -91,7 +91,7 @@ export default async function Cmv({ searchParams }: { searchParams: Promise<{ si
     </details>
   ) : null
 
-  return <PainelCmv linhas={linhas} filtro={filtro} media={media} meta={Number(meta)} metaDefinida={metaDefinida} casa={s.casa.nome} formMeta={formMeta}
+  return <PainelCmv linhas={linhas} filtro={filtro} media={media} meta={Number(meta)} metaDefinida={metaDefinida} casa={s.casa.nome} logo={s.casa.logo} formMeta={formMeta}
     desativados={desativados} botaoItem={botaoItem} blocos={blocos} agrupado={ver !== "lista"} moverItem={moverItem}
     bloco={bloco.slice(0, 120)} resultados={resultados} medias={medias} estrutura={est ? <EstruturaCustos e={est} salvar={salvarEstrutura} restaurar={restaurarEstrutura} /> : null} />
 }

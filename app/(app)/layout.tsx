@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server"
 import { SeletorCasa } from "@/components/seletor-casa"
 import { MenuCelular, MenuLateral, type ItemMenu } from "@/components/navegacao"
 import { sair } from "./actions"
+import { LogoCasa } from "@/components/logo-casa"
 
 export default async function LayoutApp({ children }: { children: React.ReactNode }) {
   const s = await obterSessao()
@@ -26,6 +27,7 @@ export default async function LayoutApp({ children }: { children: React.ReactNod
         { href: "/pendencias", rotulo: "Compras", contador: conferir },
         { href: "/estoque", rotulo: "Estoque" },
         { href: "/alertas", rotulo: "Alertas" },
+        { href: "/casa", rotulo: "Dados da casa" },
       ]
     : s.papel === "contagem" ? [{ href: "/estoque/contagem", rotulo: "Contagem" }]
     : s.papel === "estoquista" ? [{ href: "/estoque", rotulo: "Estoque" }]
@@ -36,7 +38,7 @@ export default async function LayoutApp({ children }: { children: React.ReactNod
       <header className="sticky top-0 z-30 border-b bg-background/95 backdrop-blur print:hidden">
         <div className="flex h-14 items-center gap-2 px-2 sm:px-4">
           {s.casa ? <MenuCelular itens={itens} /> : null}
-          <span className="hidden font-semibold tracking-wide sm:inline">MISEO</span>
+          {s.casa?.logo ? <LogoCasa url={s.casa.logo} nome={s.casa.nome} className="h-9 rounded" /> : <span className="hidden font-semibold tracking-wide sm:inline">MISEO</span>}
           {s.casa ? <SeletorCasa casas={s.casas} atual={s.casa.id} /> : null}
           <form action={sair} className="ml-auto">
             <button type="submit" className="min-h-11 rounded-lg px-3 text-sm text-muted-foreground hover:bg-muted" title={s.email}>

@@ -5,7 +5,7 @@ import { redirect } from "next/navigation"
 import { createClient } from "@/lib/supabase/server"
 
 export type Papel = "admin" | "gestor" | "producao" | "estoquista" | "contagem"
-export type Casa = { id: string; nome: string; papel: Papel }
+export type Casa = { id: string; nome: string; papel: Papel; logo: string | null }
 export type Sessao = {
   userId: string
   email: string
@@ -32,17 +32,18 @@ export const obterSessao = cache(async (): Promise<Sessao> => {
   let casas: Casa[] = []
   if (perfil?.ativo) {
     if (admin) {
-      const { data } = await supabase.from("estabelecimentos").select("id, nome").eq("ativo", true).order("nome")
-      casas = (data ?? []).map((c) => ({ id: c.id as string, nome: c.nome as string, papel: "admin" as const }))
+      // "*": a logo (0021) vem junto quando a coluna existe
+      const { data } = await supabase.from("estabelecimentos").select("*").eq("ativo", true).order("nome")
+      casas = (data ?? []).map((c) => ({ id: c.id as string, nome: c.nome as string, papel: "admin" as const, logo: (c.logo_url as string | null) ?? null }))
     } else {
       const { data } = await supabase
         .from("acessos_estabelecimento")
-        .select("papel, estabelecimentos(id, nome)")
+        .select("papel, estabelecimentos(*)")
         .eq("user_id", user.id)
       casas = (data ?? [])
         .map((a) => {
-          const e = a.estabelecimentos as unknown as { id: string; nome: string } | null
-          return e ? { id: e.id, nome: e.nome, papel: a.papel as Papel } : null
+          const e = a.estabelecimentos as unknown as { id: string; nome: string; logo_url?: string | null } | null
+          return e ? { id: e.id, nome: e.nome, papel: a.papel as Papel, logo: e.logo_url ?? null } : null
         })
         .filter((c): c is Casa => c !== null)
         .sort((x, y) => x.nome.localeCompare(y.nome, "pt-BR"))

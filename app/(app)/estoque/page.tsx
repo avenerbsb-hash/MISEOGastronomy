@@ -8,6 +8,7 @@ import { CopiarPedido } from "@/components/copiar-pedido"
 import { BotaoImprimir } from "@/components/botao-imprimir"
 import { buttonVariants } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
+import { LogoCasa } from "@/components/logo-casa"
 
 export const metadata: Metadata = { title: "Estoque" }
 
@@ -81,8 +82,11 @@ export default async function PedidoSemana({ searchParams }: { searchParams: Pro
     <div className="grid gap-3 print:gap-2 print:text-[10.5px]">
       {/* cabeçalho do PDF */}
       <header className="hidden border-b pb-2 print:block">
-        <div className="flex items-baseline justify-between gap-2">
-          <h1 className="text-lg font-semibold">Pedido de compra · {s.casa.nome}</h1>
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <LogoCasa url={s.casa.logo} nome={s.casa.nome} className="h-12" />
+            <h1 className="text-lg font-semibold">Pedido de compra · {s.casa.nome}</h1>
+          </div>
           <span className="text-muted-foreground">MISEO · {dataHora(new Date().toISOString())}</span>
         </div>
         <p className="text-muted-foreground">

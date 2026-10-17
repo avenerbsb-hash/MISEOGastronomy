@@ -4,6 +4,7 @@ import { CORES_STATUS, COR_TODOS } from "@/components/status-preco"
 import { cn } from "@/lib/utils"
 import { BotaoImprimir } from "@/components/botao-imprimir"
 import { SeloIndicador } from "@/components/indicador-preco"
+import { LogoCasa } from "@/components/logo-casa"
 
 // Painel de CMV da casa: só exibe o que painel_cmv_casa / cmv_da_casa calcularam no banco
 export type LinhaCmv = {
@@ -41,9 +42,9 @@ export const NOTAS_MEDIA = 10
 export type BlocoItem = { bloco: string; ordem: number }
 
 export function PainelCmv({
-  linhas, filtro, media, meta, metaDefinida, casa, formMeta, desativados = [], botaoItem, blocos, agrupado = false, moverItem, resultados, estrutura, bloco = "", medias,
+  linhas, filtro, media, meta, metaDefinida, casa, logo, formMeta, desativados = [], botaoItem, blocos, agrupado = false, moverItem, resultados, estrutura, bloco = "", medias,
 }: {
-  linhas: LinhaCmv[]; filtro: string; media: number | null; meta: number; metaDefinida: boolean; casa: string
+  linhas: LinhaCmv[]; filtro: string; media: number | null; meta: number; metaDefinida: boolean; casa: string; logo?: string | null
   formMeta?: React.ReactNode
   desativados?: ItemDesativado[]
   // botão Ativar/Desativar (formulário com a ação do servidor), montado pela página
@@ -167,6 +168,7 @@ export function PainelCmv({
         </nav>
         <BotaoImprimir>Emitir PDF</BotaoImprimir>
         </div>
+        <div className="hidden w-full print:block"><LogoCasa url={logo} nome={casa} className="h-12" /></div>
         <p className="hidden w-full text-xs text-muted-foreground print:block">
           MISEO · {casa} · gerado em {dataHora(new Date().toISOString())}
           {" · "}{FILTROS_CMV.find((f) => f.valor === filtro)?.rotulo.replace("▲ ", "") ?? "Todos"}
