@@ -10,6 +10,7 @@ import { Sparkline, tomDe, type Tom } from "@/components/sparkline"
 import type { LinhaCmv } from "@/components/painel-cmv"
 import type { Conferencia } from "@/components/conferencias"
 import { cn } from "@/lib/utils"
+import { SeloNivel, type AlertaNivel } from "@/components/alertas-niveis"
 import { insumosEmFichas } from "../insumos/dados"
 
 export const metadata: Metadata = { title: "Início" }
@@ -41,7 +42,7 @@ const suspeita = (pct: number | null | undefined) => pct != null && (Number(pct)
 export default async function Inicio() {
   const s = await exigirCustos()
   const supabase = await createClient()
-  const [painel, casa, abertas, alertas, indicadores, usados, serie, oport, variacoes] = await Promise.all([
+  const [painel, casa, abertas, alertas, indicadores, usados, serie, oport, variacoes, niveisR] = await Promise.all([
     supabase.rpc("painel_cmv_casa", { p_estab: s.casa.id }),
     supabase.rpc("cmv_da_casa", { p_estab: s.casa.id }),
     supabase.rpc("conferencias_da_casa", { p_estab: s.casa.id, p_abertas: true, p_limite: 200 }),
@@ -52,6 +53,8 @@ export default async function Inicio() {
     supabase.rpc("serie_mercado_casa", { p_estab: s.casa.id, p_semanas: SEMANAS, p_itens: 10 }),
     supabase.rpc("oportunidades_economia", { p_estab: s.casa.id }),
     variacoesDasReceitas(s.casa.id, "final"),
+    // níveis de alerta das fichas do cardápio (0026): acumulado de 30 dias, drinks e pratos mais sensíveis
+    supabase.rpc("alertas_fichas_niveis", { p_estab: s.casa.id, p_dias: 30 }),
   ])
 
   // insumos usados em fichas/preparos aprovados que ainda não têm preço nesta casa
@@ -63,6 +66,9 @@ export default async function Inicio() {
   const semCusto = linhas.filter((l) => l.situacao === "sem_custo").length
   const conferencias = abertas.error ? null : ((abertas.data ?? []) as Conferencia[])
   const fichasAlta = alertas.fichas.filter((f) => f.tipo === "final")
+  const niveis = niveisR.error ? null : ((niveisR.data ?? []) as AlertaNivel[])
+  const nivelDa = new Map((niveis ?? []).map((n) => [n.receita_id, n.nivel]))
+  const qtdNivel = (n: number) => (niveis ?? []).filter((x) => x.nivel === n).length
   // fichas do cardápio com maior oscilação de custo (para cima ou para baixo) nos últimos dias
   const noCardapio = new Map(linhas.map((l) => [l.receita_id, l]))
   const limiteData = new Date(Date.parse(hojeSP()) - DIAS_ALERTA * 86400000).toISOString().slice(0, 10)
@@ -111,6 +117,7 @@ export default async function Inicio() {
   const ticker: ItemTicker[] = [
     { rotulo: "CMV médio", valor: percentual(media), delta: delta(hoje?.var_cmv_pp, " p.p."), tom: tomDe(hoje?.var_cmv_pp), href: "/cmv" },
     { rotulo: "Acima da meta", valor: String(acima.length), delta: delta(hoje?.var_acima), tom: tomDe(hoje?.var_acima), href: "/cmv?situacao=acima_da_meta" },
+    ...(niveis ? [{ rotulo: "Fichas críticas", valor: String(qtdNivel(3)), tom: (qtdNivel(3) ? "alta" : "neutro") as Tom, href: "/alertas?nivel=3#niveis" }] : []),
     { rotulo: "Compras p/ conferir", valor: conferencias ? String(conferencias.length) : "—", delta: delta(hoje?.var_conferencias), tom: tomDe(hoje?.var_conferencias), href: "/pendencias" },
     { rotulo: `Ingredientes em alta forte (≥ ${ALTA_CRITICA}% no mês)`, valor: String(criticas), tom: criticas ? "alta" : "neutro", href: "/insumos?variacao=subiu&ordem=alta" },
     { rotulo: `Em queda forte (≥ ${-QUEDA_RELEVANTE}% no mês)`, valor: String(relevantes), tom: relevantes ? "queda" : "neutro", href: "/insumos?variacao=caiu&ordem=queda" },
@@ -147,11 +154,14 @@ export default async function Inicio() {
           risco={conferencias?.length ? "alta" : "neutro"} detalhe="alta acima do limite da casa"
           delta={delta(hoje?.var_conferencias)} tom={tomDe(hoje?.var_conferencias)} serie={col("conferencias_abertas")}
           ajuda="Compras com alta acima do limite da casa esperando conferência. Enquanto isso, o custo anterior continua valendo." />
-        <Card href={`/alertas?dias=${DIAS_ALERTA}#fichas`} icone={BookOpen} titulo="Fichas com aumento de custo" valor={String(fichasAlta.length)}
-          risco={fichasAlta.length ? "alta" : "neutro"} detalhe={`mais de 10% em ${DIAS_ALERTA} dias`}
+        <Card href={niveis ? "/alertas#niveis" : `/alertas?dias=${DIAS_ALERTA}#fichas`} icone={BookOpen} titulo="Fichas em alerta"
+          valor={String(niveis ? qtdNivel(3) + qtdNivel(2) : fichasAlta.length)}
+          risco={(niveis ? qtdNivel(3) + qtdNivel(2) : fichasAlta.length) ? "alta" : "neutro"}
+          detalhe={niveis ? `${qtdNivel(3)} ${qtdNivel(3) === 1 ? "crítica" : "críticas"} · ${qtdNivel(2)} em alerta · ${qtdNivel(1)} em atenção` : `mais de 10% em ${DIAS_ALERTA} dias`}
           delta={hoje?.var_pct != null ? `${delta(hoje.var_pct, "%")} custo das fichas` : undefined} tom={tomDe(hoje?.var_pct)}
           serie={col("indice_custo_fichas")}
-          ajuda={`Número: fichas cujo custo subiu mais de 10% nos últimos ${DIAS_ALERTA} dias. Gráfico: custo médio das fichas do cardápio (índice 100 = 12 semanas atrás), com a receita atual.`} />
+          ajuda={niveis ? "Número: fichas do cardápio em alerta ou crítico (custo ou CMV de hoje comparado com 30 dias atrás). Drinks e pratos têm limites menores, ajustáveis em Dados da casa. Gráfico: custo médio das fichas do cardápio (índice 100 = 12 semanas atrás)."
+            : `Número: fichas cujo custo subiu mais de 10% nos últimos ${DIAS_ALERTA} dias. Gráfico: custo médio das fichas do cardápio (índice 100 = 12 semanas atrás), com a receita atual.`} />
         {semPreco != null ? (
           <Card href="/insumos?variacao=sem_preco&uso=fichas" icone={PackageX} titulo="Insumos sem preço" valor={String(semPreco)}
             risco={semPreco ? "alta" : "queda"} detalhe="usados em fichas"
@@ -198,7 +208,10 @@ export default async function Inicio() {
               return (
                 <tr key={v.receita_id} className="hover:bg-muted/40">
                   <td className="max-w-0 px-3 py-2">
-                    <Link href={`/fichas/${v.receita_id}`} className="block truncate font-medium hover:underline">{v.nome}</Link>
+                    <span className="flex min-w-0 items-center gap-1.5">
+                      <Link href={`/fichas/${v.receita_id}`} className="truncate font-medium hover:underline">{v.nome}</Link>
+                      {nivelDa.get(v.receita_id) ? <SeloNivel nivel={nivelDa.get(v.receita_id)!} /> : null}
+                    </span>
                     <span className="block truncate text-[13px] text-muted-foreground" title={h.at(-1)?.insumos}>
                       {dataCurta(v.data_referencia)}{h.at(-1)?.insumos ? ` · ${h.at(-1)!.insumos}` : ""}
                     </span>

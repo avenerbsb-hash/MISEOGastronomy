@@ -2,15 +2,20 @@ import type { Metadata } from "next"
 import { exigirCustos } from "@/lib/sessao"
 import { FormAcao, BotaoEnviar } from "@/components/form-acao"
 import { EnviarLogo } from "@/components/enviar-logo"
-import { enviarLogo, removerLogo } from "./actions"
+import { FormLimites, type LimiteGrupo } from "@/components/form-limites"
+import { NOMES_GRUPO, type Grupo } from "@/components/alertas-niveis"
+import { createClient } from "@/lib/supabase/server"
+import { enviarLogo, removerLogo, salvarLimites } from "./actions"
 
 export const metadata: Metadata = { title: "Dados da casa" }
 
-// Dados da casa (gestor/admin): por enquanto, a logo usada no topo do sistema e nos PDFs
+// Dados da casa (gestor/admin): logo do topo e dos PDFs e limites dos alertas das fichas
 export default async function DadosCasa() {
   const s = await exigirCustos()
+  const supabase = await createClient()
+  const { data: limites, error: semLimites } = await supabase.rpc("limites_alerta_casa", { p_estab: s.casa.id })
   return (
-    <div className="grid max-w-2xl gap-4">
+    <div className="grid max-w-3xl gap-4">
       <div>
         <h1 className="text-xl font-semibold">Dados da casa</h1>
         <p className="text-sm text-muted-foreground">{s.casa.nome}</p>
@@ -28,6 +33,18 @@ export default async function DadosCasa() {
           </div>
         ) : <p className="text-sm text-muted-foreground">Esta casa ainda não tem logo.</p>}
         <EnviarLogo acao={enviarLogo} />
+      </section>
+      <section id="limites" className="grid scroll-mt-20 gap-3 rounded-xl border p-4">
+        <h2 className="text-base font-semibold">Limites dos alertas de fichas</h2>
+        <p className="text-sm text-muted-foreground">
+          Cada ficha do cardápio é comparada com o período escolhido em Alertas (acumulado). Custo: alta em % que leva a
+          atenção, alerta ou crítico. CMV: subida em pontos que já dá atenção, e quantos pontos acima da meta tornam crítico
+          (passar da meta já é alerta). Drinks e pratos começam mais sensíveis.
+        </p>
+        {semLimites ? <p className="text-sm text-muted-foreground">Os limites de alerta ainda não estão ativos (migração 0026).</p>
+          : ((limites ?? []) as LimiteGrupo[]).map((l) => (
+            <FormLimites key={l.grupo} limite={l} nome={NOMES_GRUPO[l.grupo as Grupo] ?? l.grupo} acao={salvarLimites} />
+          ))}
       </section>
     </div>
   )

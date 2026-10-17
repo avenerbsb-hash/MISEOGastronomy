@@ -42,3 +42,28 @@ export async function removerLogo(): Promise<Estado> {
   revalidatePath("/", "layout")
   return { ok: "Logo removida." }
 }
+
+// Limites de alerta das fichas por grupo (0026); "Voltar ao padrão" apaga o ajuste da casa
+export async function salvarLimites(_: Estado, dados: FormData): Promise<Estado> {
+  const s = await exigirCustos()
+  const grupo = String(dados.get("grupo") ?? "")
+  if (!["drinks", "comida", "bebidas", "outros"].includes(grupo)) return { erro: "Grupo inválido." }
+  const padrao = dados.get("acao") === "padrao"
+  const n = (k: string) => {
+    const v = Number(String(dados.get(k) ?? "").replace(",", "."))
+    return Number.isFinite(v) && v > 0 ? v : null
+  }
+  const valores = { atencao: n("atencao"), alerta: n("alerta"), critico: n("critico"), cmv_atencao: n("cmv_atencao"), cmv_critico: n("cmv_critico") }
+  if (!padrao && Object.values(valores).some((v) => v == null)) return { erro: "Preencha todos os limites com números maiores que zero." }
+  const supabase = await createClient()
+  const { error } = await supabase.rpc("definir_limites_alerta", {
+    p_estab: s.casa.id, p_grupo: grupo,
+    p_atencao: padrao ? null : valores.atencao, p_alerta: padrao ? null : valores.alerta, p_critico: padrao ? null : valores.critico,
+    p_cmv_atencao: padrao ? null : valores.cmv_atencao, p_cmv_critico: padrao ? null : valores.cmv_critico,
+  })
+  if (error) return { erro: error.message.includes("Could not find") ? "Os limites de alerta ainda não estão ativos (migração 0026)." : traduzirErro(error) }
+  revalidatePath("/casa")
+  revalidatePath("/alertas")
+  revalidatePath("/inicio")
+  return { ok: padrao ? "Limites voltaram ao padrão." : "Limites salvos. Os alertas já usam os valores novos." }
+}

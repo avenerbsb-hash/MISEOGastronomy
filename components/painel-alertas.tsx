@@ -52,7 +52,7 @@ export function PainelAlertas({ insumos, fichas, dias, erro = false, meta = 30, 
     <div className="grid gap-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
-          <h1 className="text-xl font-semibold">Alertas de aumento</h1>
+          <h2 className="text-base font-semibold">Altas de insumos e fichas (última compra)</h2>
           <p className="text-sm text-muted-foreground">Altas acima de {LIMITE_ALERTA}%, com compra nos últimos {dias} dias</p>
         </div>
         <nav className="flex gap-1.5 text-sm" aria-label="Período">
