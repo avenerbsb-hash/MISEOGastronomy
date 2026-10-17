@@ -157,7 +157,7 @@ export function PainelCmv({
         <div>
           <h1 className="text-xl font-semibold">Painel de CMV</h1>
           <p className="text-sm text-muted-foreground">
-            Cardápio de {casa}, {agrupado ? "em blocos como no cardápio" : "do CMV mais alto para o mais baixo"}, com o preço sugerido para a meta
+            {agrupado ? "Em blocos como no cardápio" : "Do CMV mais alto para o mais baixo"}, com o preço sugerido para a meta
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-1.5 print:hidden">
@@ -255,7 +255,7 @@ export function PainelCmv({
                 <th className="px-3 py-2 text-right print:px-1.5 print:py-1">Custo</th>
                 <th className="px-3 py-2 text-right print:px-1.5 print:py-1">Preço</th>
                 <th className="px-3 py-2 text-right print:px-1.5 print:py-1">CMV</th>
-                <th className="px-3 py-2 text-right print:px-1.5 print:py-1" title="Preço − CMV − impostos e taxas − despesas fixas e financeira">{resultados ? "Resultado na ponta" : "Margem"}</th>
+                <th className="px-3 py-2 text-right print:px-1.5 print:py-1" title="Preço − CMV − impostos e taxas − despesas fixas e financeira">{resultados ? "Resultado na ponta" : "Saldo após ingredientes"}</th>
                 <th className="px-3 py-2 text-right print:px-1.5 print:py-1">Preço para a meta</th>
                 <th className="px-3 py-2 text-right print:px-1.5 print:py-1">Manter CMV do item</th>
                 <th className="px-3 py-2 print:hidden" />

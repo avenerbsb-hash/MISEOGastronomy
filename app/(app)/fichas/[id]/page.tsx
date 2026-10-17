@@ -25,14 +25,16 @@ export default async function FichaFinal({ params }: { params: Promise<{ id: str
     return <p className="text-sm text-muted-foreground">Esta ficha ainda não tem versão aprovada. <Link href={`/fichas/${id}/editar`} className="underline">Abrir o rascunho</Link>.</p>
   }
 
-  const [custo, gerencial, precos, variacoes, historico, componentes] = await Promise.all([
+  const [custo, gerencial, precos, variacoes, historico, componentes, casa] = await Promise.all([
     supabase.rpc("custo_receita", { p_receita: id, p_estab: s.casa.id }),
     supabase.rpc("ficha_gerencial", { p_receita: id, p_estab: s.casa.id }),
     precosDasFichas(s.casa.id),
     variacoesDasReceitas(s.casa.id, "final"),
     historicoCusto(id, s.casa.id),
     variacoesDosComponentes(s.casa.id),
+    supabase.from("estabelecimentos").select("cmv_alvo_padrao").eq("id", s.casa.id).maybeSingle(),
   ])
+  const meta = Number(casa.data?.cmv_alvo_padrao ?? 30)
   const v = variacoes.get(id)
   const p = precos.get(id)
   const linhas = (gerencial.data ?? []) as LinhaGerencial[]
@@ -42,8 +44,8 @@ export default async function FichaFinal({ params }: { params: Promise<{ id: str
       <AvisoRascunho receitaId={id} href={`/fichas/${id}/editar`} />
       <Card>
         <CardHeader>
-          <CardTitle>Custo em {s.casa.nome}</CardTitle>
-          <CardDescription>Versão vigente, com o último preço validado de cada insumo</CardDescription>
+          <CardTitle>Gestão</CardTitle>
+          <CardDescription>Versão vigente, com o último preço validado de cada insumo nesta casa</CardDescription>
         </CardHeader>
         <CardContent className="grid gap-3">
           <div className="flex flex-wrap items-baseline gap-x-6 gap-y-1">
@@ -59,9 +61,12 @@ export default async function FichaFinal({ params }: { params: Promise<{ id: str
                 <div><div className="text-xs text-muted-foreground">Preço no cardápio</div><div className="text-xl tabular-nums">{reais(p.preco)}</div></div>
                 <div>
                   <div className="text-xs text-muted-foreground">CMV</div>
-                  <div className={cn("text-xl tabular-nums", Number(p.cmv) > 30 && "font-semibold text-alta")}>{percentual(p.cmv)}</div>
+                  <div className={cn("text-xl tabular-nums", Number(p.cmv) > meta ? "font-semibold text-alta" : "text-queda")}>{percentual(p.cmv)}</div>
                 </div>
-                <div><div className="text-xs text-muted-foreground">Margem</div><div className="text-xl tabular-nums">{reais(p.margem)}</div></div>
+                <div><div className="text-xs text-muted-foreground">Meta de CMV da casa</div><div className="text-xl tabular-nums">{percentual(meta)}</div></div>
+                <div title="Preço de venda menos o custo dos ingredientes (sem impostos, taxas e despesas)">
+                  <div className="text-xs text-muted-foreground">Saldo após ingredientes</div><div className="text-xl tabular-nums">{reais(p.margem)}</div>
+                </div>
               </>
             ) : <Link href={`/fichas/${id}/preco`} className="text-sm underline">Definir preço de venda nesta casa</Link>}
           </div>
@@ -69,7 +74,7 @@ export default async function FichaFinal({ params }: { params: Promise<{ id: str
         </CardContent>
       </Card>
       <HistoricoCusto linhas={historico} dimensao="contagem" casa={s.casa.nome} />
-      <FichaProducao linhas={linhasProducao} />
+      <p className="text-sm text-muted-foreground">Ingredientes, etapas e rendimento ficam na aba <Link href={`/fichas/${id}/preparo`} className="underline">Preparo</Link>.</p>
     </div>
   )
 }

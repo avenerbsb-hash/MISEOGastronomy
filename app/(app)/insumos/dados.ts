@@ -12,6 +12,13 @@ export function situacao(v: VariacaoInsumo | undefined): Situacao {
   return v.custo_anterior == null ? "sem_comparacao" : "estavel"
 }
 
+// Base da comparação dos filtros: mês × mês anterior (principal) ou última compra × anterior
+export const BASES = {
+  mes: { rotulo: "Mês × mês anterior", explica: "média do mês contra a média do mês anterior" },
+  compra: { rotulo: "Última × penúltima compra", explica: "última compra validada contra a anterior" },
+} as const
+export type Base = keyof typeof BASES
+
 export const FILTROS: { valor: "" | Situacao; rotulo: string }[] = [
   { valor: "", rotulo: "Todos" },
   { valor: "subiu", rotulo: "▲ Subiram" },
@@ -28,13 +35,29 @@ export const ORDENS = {
 } as const
 export type Ordem = keyof typeof ORDENS
 
-export type ParamsInsumos = { q?: string; categoria?: string; variacao?: string; ordem?: string; mes?: string }
+export type ParamsInsumos = { q?: string; categoria?: string; variacao?: string; ordem?: string; mes?: string; base?: string; uso?: string }
 export type LinhaInsumo = Pick<Insumo, "id" | "codigo" | "nome" | "dimensao" | "categoria_id" | "ativo">
+
+// Insumos usados em versões aprovadas (fichas e preparos), em páginas de 1000 linhas
+export async function insumosEmFichas(): Promise<Set<string>> {
+  const supabase = await createClient()
+  const ids = new Set<string>()
+  for (let de = 0; ; de += 1000) {
+    const { data } = await supabase.from("componentes_receita").select("insumo_id, versoes_receita!inner(status)")
+      .eq("versoes_receita.status", "aprovada").not("insumo_id", "is", null).range(de, de + 999)
+    for (const c of (data ?? []) as { insumo_id: string }[]) ids.add(c.insumo_id)
+    if (!data || data.length < 1000) break
+  }
+  return ids
+}
 
 export async function carregarInsumos(casaId: string, params: ParamsInsumos) {
   const { q = "", categoria = "" } = params
   const filtro = FILTROS.some((f) => f.valor === params.variacao) ? (params.variacao as Situacao) : ""
   const ordem: Ordem = params.ordem && params.ordem in ORDENS ? (params.ordem as Ordem) : "nome"
+  const base: Base = params.base === "compra" ? "compra" : "mes"
+  // "fichas" = só insumos usados em alguma ficha ou preparo aprovado
+  const uso = params.uso === "fichas" ? "fichas" : ""
   const supabase = await createClient()
 
   const cats = await categorias("insumo")
@@ -54,11 +77,23 @@ export async function carregarInsumos(casaId: string, params: ParamsInsumos) {
     consulta = consulta.in("categoria_id", ids)
   }
   const mesISO = mesDoParametro(params.mes)
-  const [{ data, error }, variacoes, indicadores] = await Promise.all([consulta, variacoesDaCasa(casaId), indicadoresDaCasa(casaId, mesISO)])
-  // Indicador A (0012) quando disponível; senão a variação antiga
-  const sit = (id: string): Situacao => (indicadores ? indicadores.get(id)?.status_ultima ?? "sem_preco" : situacao(variacoes.get(id)))
-  const pctA = (id: string) => (indicadores ? indicadores.get(id)?.variacao_ultima_pct : variacoes.get(id)?.variacao_pct)
-  const todos = (data ?? []) as LinhaInsumo[]
+  const [{ data, error }, variacoes, indicadores, usados] = await Promise.all([
+    consulta, variacoesDaCasa(casaId), indicadoresDaCasa(casaId, mesISO),
+    uso ? insumosEmFichas() : Promise.resolve(null),
+  ])
+  // Situação pela base escolhida (0012); sem a migração, a variação antiga
+  const sit = (id: string): Situacao => {
+    if (!indicadores) return situacao(variacoes.get(id))
+    const ind = indicadores.get(id)
+    if (!ind || ind.status_ultima === "sem_preco") return "sem_preco"
+    if (base === "compra") return ind.status_ultima
+    return ind.status_mensal === "sem_base" ? "sem_comparacao" : ind.status_mensal
+  }
+  const pctA = (id: string) => (indicadores
+    ? (base === "compra" ? indicadores.get(id)?.variacao_ultima_pct : indicadores.get(id)?.variacao_mensal_pct)
+    : variacoes.get(id)?.variacao_pct)
+  const emFichas = usados
+  const todos = ((data ?? []) as LinhaInsumo[]).filter((i) => !emFichas || emFichas.has(i.id))
 
   const contagem = new Map<string, number>([["", todos.length]])
   for (const i of todos) {
@@ -80,5 +115,5 @@ export async function carregarInsumos(casaId: string, params: ParamsInsumos) {
     })
   }
 
-  return { q, categoria, filtro, ordem, cats, nomes, variacoes, indicadores, mes: mesISO?.slice(0, 7) ?? "", sit, todos, insumos, contagem, erro: !!error }
+  return { q, categoria, filtro, ordem, base, uso, cats, nomes, variacoes, indicadores, mes: mesISO?.slice(0, 7) ?? "", sit, todos, insumos, contagem, erro: !!error }
 }

@@ -6,6 +6,7 @@ import { BuscaInsumo } from "@/components/busca-insumo"
 import { BotaoEnviar, type Acao } from "@/components/form-acao"
 import { Campo, Entrada, Selecao } from "@/components/campos"
 import { UNIDADES_POR_DIMENSAO, type Dimensao } from "@/lib/formato"
+import { CamposCompra } from "@/components/campos-compra"
 
 // Compra sem nota (feira, mercado da esquina): escolhe o insumo, quanto comprou e quanto pagou.
 export function CompraAvulsa({ acao, insumos, fornecedores, hoje }: {
@@ -31,17 +32,7 @@ export function CompraAvulsa({ acao, insumos, fornecedores, hoje }: {
         <BuscaInsumo insumos={insumos} valor={insumoId} aoEscolher={setInsumoId} placeholder="Digite para procurar (ex.: caju)…" />
       </Campo>
       <div className="grid gap-3 sm:grid-cols-[1fr_7rem_1fr_10rem]">
-        <Campo rotulo="Quantidade">
-          <Entrada name="quantidade" inputMode="decimal" required placeholder="ex.: 1" disabled={!insumo} />
-        </Campo>
-        <Campo rotulo="Unidade">
-          <Selecao name="unidade" key={insumoId} defaultValue={unidades[0]?.codigo} disabled={!insumo} aria-label="Unidade">
-            {unidades.map((u) => <option key={u.codigo} value={u.codigo}>{u.nome}</option>)}
-          </Selecao>
-        </Campo>
-        <Campo rotulo="Valor total pago (R$)">
-          <Entrada name="valor_total" inputMode="decimal" required placeholder="ex.: 10,00" disabled={!insumo} />
-        </Campo>
+        <CamposCompra insumoId={insumoId} dim={insumo?.dimensao ?? "massa"} unidades={unidades} desabilitado={!insumo} />
         <Campo rotulo="Data da compra">
           <Entrada name="data_compra" type="date" defaultValue={hoje} max={hoje} required />
         </Campo>

@@ -52,7 +52,7 @@ export default async function PrecoVenda({ params }: { params: Promise<{ id: str
     sugestoes.push({ rotulo: "Preço ideal (estrutura de custos)", detalhe: `cobre taxas e despesas e sobra ${percentual(res.lucro_alvo_pct)}`, valor: Number(res.preco_ideal_arredondado) })
   }
   if (linha?.preco_sugerido_margem_arredondado) {
-    sugestoes.push({ rotulo: "Manter margem em R$", detalhe: `margem de referência ${reais(linha.margem_referencia)}`, valor: Number(linha.preco_sugerido_margem_arredondado) })
+    sugestoes.push({ rotulo: "Manter saldo após ingredientes", detalhe: `saldo de referência ${reais(linha.margem_referencia)}`, valor: Number(linha.preco_sugerido_margem_arredondado) })
   }
 
   return (

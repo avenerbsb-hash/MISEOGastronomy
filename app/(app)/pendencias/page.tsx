@@ -61,7 +61,6 @@ export default async function Pendencias() {
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
           <h1 className="text-xl font-semibold">Compras</h1>
-          <p className="text-sm text-muted-foreground">{s.casa.nome}</p>
         </div>
         <Link href="/pendencias/notas" className={buttonVariants({ className: "h-10 px-4" })}>Importar nota (XML)</Link>
       </div>

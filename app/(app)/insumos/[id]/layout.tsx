@@ -3,6 +3,7 @@ import { notFound } from "next/navigation"
 import { createClient } from "@/lib/supabase/server"
 import { exigirCustos } from "@/lib/sessao"
 import { Abas } from "@/components/abas"
+import { VoltarLista } from "@/components/voltar-lista"
 import { buttonVariants } from "@/components/ui/button"
 import { NOME_DIMENSAO, type Dimensao } from "@/lib/formato"
 
@@ -19,7 +20,7 @@ export default async function LayoutInsumo({
 
   return (
     <div>
-      <div className="mb-2 text-sm"><Link href="/insumos" className="text-muted-foreground hover:underline">← Insumos</Link></div>
+      <div className="mb-2 text-sm"><VoltarLista base="/insumos" rotulo="← Insumos" /></div>
       <div className="mb-3 flex flex-wrap items-start justify-between gap-2">
         <div>
           <h1 className="text-xl font-semibold">{insumo.nome}</h1>
@@ -28,7 +29,10 @@ export default async function LayoutInsumo({
             {!insumo.ativo ? " · inativo" : ""}
           </p>
         </div>
-        <Link href={`/insumos/${id}/editar`} className={buttonVariants({ variant: "outline", className: "h-9 px-3" })}>Editar</Link>
+        <div className="flex gap-2">
+          <a href="#registrar-compra" className={buttonVariants({ className: "h-11 px-4" })}>Registrar compra</a>
+          <Link href={`/insumos/${id}/editar`} className={buttonVariants({ variant: "outline", className: "h-11 px-4" })}>Editar</Link>
+        </div>
       </div>
       <Abas itens={[
         { href: `/insumos/${id}`, rotulo: "Resumo" },

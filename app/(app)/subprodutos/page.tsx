@@ -47,9 +47,6 @@ export default async function Subprodutos({ searchParams }: { searchParams: Prom
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
           <h1 className="text-xl font-semibold">Preparos e bases</h1>
-          <p className="text-sm text-muted-foreground">
-            {custos ? `Custo pela versão vigente em ${s.casa.nome}` : "Fichas de produção"}
-          </p>
         </div>
         {custos ? (
           <Link href="/subprodutos/novo" className={buttonVariants({ className: "h-10 px-4" })}>Novo preparo</Link>

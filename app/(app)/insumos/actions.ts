@@ -196,8 +196,8 @@ export async function registrarCompra(insumoId: string, _: Estado, dados: FormDa
   revalidatePath("/fichas", "layout")
   revalidatePath("/cmv")
   return gravado?.status === "pendente"
-    ? { ok: "Compra registrada. O preço subiu acima do limite da casa: confira em Compras → conferência. Até lá vale o custo anterior." }
-    : { ok: "Compra registrada. O custo do insumo foi atualizado." }
+    ? { ok: "Em validação — custo mantido. O preço subiu acima do limite da casa: confira em Compras. Até lá vale o custo anterior." }
+    : { ok: "Validada — custo atualizado. A compra entrou no custo do insumo e das fichas." }
 }
 
 // Compra avulsa (sem nota), escolhendo o insumo no próprio formulário
@@ -255,4 +255,20 @@ export async function estornarCompra(registroId: string, insumoId: string, _: Es
   revalidatePath("/cmv")
   const n = Number(data ?? 0)
   return { ok: `${n} ${n === 1 ? "compra estornada" : "compras estornadas"}${c ? " e corrigida" + (n === 1 ? "" : "s") : ""}. O custo já foi recalculado.` }
+}
+
+// ------------------------------------------------------------------ prévia da compra (0018)
+export type PreviaCompra = { custo_base: number; custo_atual: number | null; variacao_pct: number | null; limite_pct: number; vai_conferir: boolean }
+
+// Custo por g/mL/un que a compra vai gravar, calculado no banco; null se faltar dado ou sem a migração
+export async function previaCompra(insumoId: string, quantidade: string, unidade: string, valor: string): Promise<PreviaCompra | null> {
+  const s = await exigirCustos()
+  const q = decimal.safeParse(quantidade), v = decimal.safeParse(valor)
+  if (!q.success || !v.success || !/^[0-9a-f-]{36}$/.test(insumoId)) return null
+  const supabase = await createClient()
+  const { data, error } = await supabase.rpc("previa_compra", {
+    p_insumo: insumoId, p_estab: s.casa.id, p_quantidade: q.data, p_unidade: unidade, p_valor: v.data,
+  })
+  if (error) return null
+  return ((data ?? []) as PreviaCompra[])[0] ?? null
 }

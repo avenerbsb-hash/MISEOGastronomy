@@ -7,13 +7,13 @@ export function AvisoAlertas({ quantidade, um, varios, ancora }: { quantidade: n
   if (!quantidade) return null
   const cor = CORES_STATUS.subiu
   return (
-    <Link href={`/alertas#${ancora}`}
-      className="flex flex-wrap items-center justify-between gap-2 rounded-xl px-4 py-2.5 text-sm hover:opacity-90"
+    <Link href={`/alertas?dias=${DIAS_ALERTA}#${ancora}`}
+      className="flex min-h-11 flex-wrap items-center justify-between gap-2 rounded-xl px-4 py-2.5 text-sm hover:opacity-90"
       style={{ color: cor.texto, backgroundColor: cor.fundo }}>
       <span>
         <b>▲ {quantidade} {quantidade === 1 ? um : varios}</b> mais de {LIMITE_ALERTA}% nos últimos {DIAS_ALERTA} dias
       </span>
-      <span className="font-medium underline">Ver alertas</span>
+      <span className="font-semibold underline">Revisar altas</span>
     </Link>
   )
 }

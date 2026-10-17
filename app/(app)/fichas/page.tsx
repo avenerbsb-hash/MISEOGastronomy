@@ -98,9 +98,6 @@ export default async function Fichas({ searchParams }: { searchParams: Promise<{
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
           <h1 className="text-xl font-semibold">Fichas técnicas</h1>
-          <p className="text-sm text-muted-foreground">
-            {custos ? `Custo pela versão vigente e preço do cardápio de ${s.casa.nome}` : "Fichas de produção"}
-          </p>
         </div>
         {custos ? (
           <nav className="flex gap-1.5 text-sm" aria-label="Ordenar">
@@ -171,7 +168,7 @@ export default async function Fichas({ searchParams }: { searchParams: Promise<{
                       </span>
                       {p?.cmv != null ? (
                         <span className={cn("text-xs", Number(p.cmv) > CMV_ALERTA ? "font-semibold text-alta" : "text-muted-foreground")}>
-                          CMV {percentual(p.cmv)} · margem {reais(p.margem)}
+                          CMV {percentual(p.cmv)} · saldo após ingredientes {reais(p.margem)}
                         </span>
                       ) : custo == null ? <span className="text-xs text-muted-foreground">Falta preço de algum insumo</span> : null}
                     </div>

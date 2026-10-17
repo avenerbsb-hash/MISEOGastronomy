@@ -1,4 +1,5 @@
 import Link from "next/link"
+import { CamposCompra } from "@/components/campos-compra"
 import { createClient } from "@/lib/supabase/server"
 import { exigirCustos } from "@/lib/sessao"
 import { indicadoresDaCasa, mesDoParametro, variacoesDaCasa } from "@/lib/dados"
@@ -100,10 +101,10 @@ export default async function ResumoInsumo({ params, searchParams }: { params: P
         </CardContent>
       </Card>
 
-      <Card>
+      <Card id="registrar-compra" className="scroll-mt-20">
         <CardHeader>
           <CardTitle>Registrar compra</CardTitle>
-          <CardDescription>O custo é atualizado na hora. Alta acima do limite da casa vai para conferência em Compras.</CardDescription>
+          <CardDescription>Validada — custo atualizado na hora. Alta acima do limite da casa fica Em validação — custo mantido até a conferência em Compras.</CardDescription>
         </CardHeader>
         <CardContent>
           {medirNoRecebimento ? (
@@ -123,17 +124,8 @@ export default async function ResumoInsumo({ params, searchParams }: { params: P
                   {(fornecedores.data ?? []).map((f) => <option key={f.id} value={f.id}>{f.nome}</option>)}
                 </Selecao>
               </Campo>
-              <Campo rotulo={medirNoRecebimento ? (dim === "massa" ? "Peso medido" : "Quantidade contada") : "Quantidade"}>
-                <Entrada name="quantidade" inputMode="decimal" required placeholder={dim === "massa" ? "19,4" : "30"} />
-              </Campo>
-              <Campo rotulo="Unidade">
-                <Selecao name="unidade" defaultValue={unidades[0].codigo} required>
-                  {unidades.map((u) => <option key={u.codigo} value={u.codigo}>{u.nome}</option>)}
-                </Selecao>
-              </Campo>
-              <Campo rotulo="Valor total pago (R$)">
-                <Entrada name="valor_total" inputMode="decimal" required placeholder="509,59" />
-              </Campo>
+              <CamposCompra insumoId={id} dim={dim} unidades={unidades}
+                rotuloQuantidade={medirNoRecebimento ? (dim === "massa" ? "Peso medido" : "Quantidade contada") : "Quantidade"} />
               <Campo rotulo="Nº da nota">
                 <Entrada name="documento_ref" maxLength={60} />
               </Campo>

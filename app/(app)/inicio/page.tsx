@@ -9,6 +9,7 @@ import { SeloIndicador, pctPreciso } from "@/components/indicador-preco"
 import type { LinhaCmv } from "@/components/painel-cmv"
 import type { Conferencia } from "@/components/conferencias"
 import { cn } from "@/lib/utils"
+import { insumosEmFichas } from "../insumos/dados"
 
 export const metadata: Metadata = { title: "Início" }
 
@@ -17,13 +18,16 @@ export const metadata: Metadata = { title: "Início" }
 export default async function Inicio() {
   const s = await exigirCustos()
   const supabase = await createClient()
-  const [painel, casa, abertas, alertas, indicadores] = await Promise.all([
+  const [painel, casa, abertas, alertas, indicadores, usados] = await Promise.all([
     supabase.rpc("painel_cmv_casa", { p_estab: s.casa.id }),
     supabase.rpc("cmv_da_casa", { p_estab: s.casa.id }),
     supabase.rpc("conferencias_da_casa", { p_estab: s.casa.id, p_abertas: true, p_limite: 200 }),
     alertasDaCasa(s.casa.id),
     indicadoresDaCasa(s.casa.id),
+    insumosEmFichas(),
   ])
+  // insumos usados em fichas/preparos aprovados que ainda não têm preço nesta casa
+  const semPreco = indicadores ? [...usados].filter((id) => (indicadores.get(id)?.status_ultima ?? "sem_preco") === "sem_preco").length : null
   const linhas = (painel.data ?? []) as LinhaCmv[]
   const media = ((casa.data ?? []) as { cmv_medio_simples_pct: number | null }[])[0]?.cmv_medio_simples_pct ?? null
   const meta = Number(linhas[0]?.meta_pct ?? 30)
@@ -48,10 +52,9 @@ export default async function Inicio() {
     <div className="grid gap-5">
       <div>
         <h1 className="text-xl font-semibold">Início</h1>
-        <p className="text-sm text-muted-foreground">O que pede atenção hoje em {s.casa.nome}</p>
       </div>
 
-      <section aria-label="Resumo" className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <section aria-label="Resumo" className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
         <Indicador href="/cmv" valor={percentual(media)} destaque={media != null && media > meta}
           rotulo="CMV médio do cardápio" detalhe={`meta da casa ${percentual(meta)}`} />
         <Indicador href="/cmv?situacao=acima_da_meta" valor={String(acima.length)} destaque={acima.length > 0}
@@ -59,8 +62,12 @@ export default async function Inicio() {
           detalhe={semCusto ? `${semCusto} ${semCusto === 1 ? "item" : "itens"} sem custo` : `de ${linhas.length} no cardápio`} />
         <Indicador href="/pendencias" valor={conferencias ? String(conferencias.length) : "—"} destaque={!!conferencias?.length}
           rotulo={conferencias?.length === 1 ? "compra para conferir" : "compras para conferir"} detalhe="alta acima do limite da casa" />
-        <Indicador href="/alertas" valor={String(fichasAlta.length)} destaque={fichasAlta.length > 0}
-          rotulo={fichasAlta.length === 1 ? "ficha subiu de custo" : "fichas subiram de custo"} detalhe={`mais de 10% em ${DIAS_ALERTA} dias`} />
+        <Indicador href={`/alertas?dias=${DIAS_ALERTA}#fichas`} valor={String(fichasAlta.length)} destaque={fichasAlta.length > 0}
+          rotulo={fichasAlta.length === 1 ? "ficha subiu de custo" : "fichas subiram de custo"} detalhe={`mais de 10% em ${DIAS_ALERTA} dias · revisar altas`} />
+        {semPreco != null ? (
+          <Indicador href="/insumos?variacao=sem_preco&uso=fichas" valor={String(semPreco)} destaque={semPreco > 0}
+            rotulo={semPreco === 1 ? "insumo sem preço" : "insumos sem preço"} detalhe="usados em fichas · completar preços" />
+        ) : null}
       </section>
 
       <div className="grid gap-4 lg:grid-cols-2">
