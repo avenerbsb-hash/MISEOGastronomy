@@ -31,7 +31,7 @@ const esquemaNovo = z.object({
 })
 
 export async function criarSubproduto(_: Estado, dados: FormData): Promise<Estado> {
-  await exigirCustos()
+  const s = await exigirCustos()
   const v = esquemaNovo.safeParse({
     codigo: dados.get("codigo"),
     nome: dados.get("nome"),
@@ -51,6 +51,7 @@ export async function criarSubproduto(_: Estado, dados: FormData): Promise<Estad
     .insert({
       codigo: v.data.codigo.toUpperCase(), nome: v.data.nome, tipo: "subproduto",
       categoria_id: v.data.categoria_id ?? null, dimensao_saida: v.data.dimensao_saida,
+      estabelecimento_id: dados.get("exclusiva") === "on" ? s.casa.id : null,
     })
     .select("id").single()
   if (error) return { erro: traduzirErro(error) }

@@ -1,12 +1,12 @@
 import type { Metadata } from "next"
 import Link from "next/link"
 import { createClient } from "@/lib/supabase/server"
-import { exigirProducao, podeVerCustos } from "@/lib/sessao"
+import { ehGestor, exigirProducao, podeVerCustos } from "@/lib/sessao"
 import { categorias, nomesCategorias } from "@/lib/dados"
 import { percentual, reais } from "@/lib/formato"
 import { Badge } from "@/components/ui/badge"
 import { buttonVariants } from "@/components/ui/button"
-import { FileDown } from "lucide-react"
+import { FileDown, Plus } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { precosDasFichas } from "./dados"
 import { BuscaLista } from "@/components/busca-lista"
@@ -108,6 +108,11 @@ export default async function Fichas({ searchParams }: { searchParams: Promise<{
           <Link href="/fichas/pdf-cardapio" className={buttonVariants({ variant: "outline", className: "h-9 px-3" })}>
             <FileDown className="size-4" aria-hidden /> PDF do cardápio
           </Link>
+          {ehGestor(s) ? (
+            <Link href="/fichas/nova" className={buttonVariants({ className: "h-9 px-3" })}>
+              <Plus className="size-4" aria-hidden /> Nova ficha
+            </Link>
+          ) : null}
         </div>
         {custos ? (
           <nav className="flex gap-1.5 text-sm" aria-label="Ordenar">

@@ -8,7 +8,7 @@ import { criarSubproduto } from "../actions"
 export const metadata: Metadata = { title: "Novo preparo" }
 
 export default async function NovoSubproduto() {
-  await exigirCustos()
+  const s = await exigirCustos()
   const cats = await categorias("receita")
   const nomes = nomesCategorias(cats)
   return (
@@ -45,6 +45,13 @@ export default async function NovoSubproduto() {
             </Selecao>
           </Campo>
         </div>
+        <label className="flex items-start gap-2 rounded-lg border p-3 text-sm">
+          <input type="checkbox" name="exclusiva" className="mt-0.5 size-4" />
+          <span>
+            <b>Só desta casa ({s.casa.nome})</b>
+            <span className="block text-xs text-muted-foreground">Marque se este preparo é exclusivo da casa. Sem marcar, fica disponível para todas as casas.</span>
+          </span>
+        </label>
         <div><BotaoEnviar>Criar e montar a receita</BotaoEnviar></div>
       </FormAcao>
     </div>

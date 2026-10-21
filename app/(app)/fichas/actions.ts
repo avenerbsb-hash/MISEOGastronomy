@@ -82,3 +82,41 @@ export async function restaurarFicha(receitaId: string): Promise<Estado> {
   revalidatePath("/cmv")
   return { ok: "Ficha restaurada. Para voltar ao cardápio, reative o item no Painel de CMV → Desativados." }
 }
+
+// ------------------------------------------------------------------ nova ficha (receita final + versão 1 em rascunho)
+const esquemaNova = z.object({
+  codigo: texto(30).optional(),
+  nome: texto(120).min(2, "Informe o nome."),
+  categoria_id: z.string().uuid().optional(),
+  porcoes: decimal.pipe(z.number().positive("Informe quantas porções a ficha rende.")),
+  porcao: texto(80).optional(),
+})
+
+export async function criarFicha(_: Estado, dados: FormData): Promise<Estado> {
+  const s = await exigirCustos()
+  const v = esquemaNova.safeParse({
+    codigo: opcional(dados.get("codigo")), nome: dados.get("nome"), categoria_id: opcional(dados.get("categoria_id")),
+    porcoes: dados.get("porcoes"), porcao: opcional(dados.get("porcao")),
+  })
+  if (!v.success) return { erro: v.error.issues[0].message }
+  const supabase = await createClient()
+  // código em branco: próximo FT-NNN livre
+  let codigo = v.data.codigo?.toUpperCase()
+  if (!codigo) {
+    const { data } = await supabase.from("receitas").select("codigo").like("codigo", "FT-%")
+    const max = Math.max(0, ...((data ?? []) as { codigo: string }[]).map((r) => Number(/^FT-(\d+)$/.exec(r.codigo)?.[1] ?? 0)))
+    codigo = `FT-${String(max + 1).padStart(3, "0")}`
+  }
+  const { data: receita, error } = await supabase.from("receitas").insert({
+    codigo, nome: v.data.nome, tipo: "final", categoria_id: v.data.categoria_id ?? null, dimensao_saida: "contagem",
+    estabelecimento_id: dados.get("exclusiva") === "on" ? s.casa.id : null,
+  }).select("id").single()
+  if (error) return { erro: error.code === "23505" ? "Já existe uma ficha com esse nome ou código." : traduzirErro(error) }
+  const { error: e2 } = await supabase.from("versoes_receita").insert({
+    receita_id: receita.id, numero: 1, rendimento_quantidade: v.data.porcoes, rendimento_unidade: "un",
+    porcao_descricao: v.data.porcao ?? null,
+  })
+  if (e2) return { erro: traduzirErro(e2) }
+  revalidatePath("/fichas")
+  redirect(`/fichas/${receita.id}/editar`)
+}
