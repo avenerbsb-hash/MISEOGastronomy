@@ -9,6 +9,7 @@ import { BuscaLista } from "@/components/busca-lista"
 import { emAlerta, variacoesDasReceitas } from "@/lib/dados"
 import { AvisoAlertas } from "@/components/aviso-alertas"
 import { BadgeVariacao } from "@/components/variacao"
+import { SelecaoPdf } from "@/components/selecao-pdf"
 
 export const metadata: Metadata = { title: "Preparos e bases" }
 
@@ -60,14 +61,18 @@ export default async function Subprodutos({ searchParams }: { searchParams: Prom
       {receitas.length === 0 ? (
         <p className="rounded-xl border p-6 text-center text-sm text-muted-foreground">{q ? "Nenhum subproduto encontrado." : "Nenhum subproduto cadastrado."}</p>
       ) : (
+        <SelecaoPdf acao="/subprodutos/pdf" total={receitas.filter((r) => r.versoes_receita.some((v) => v.status === "aprovada")).length}>
         <ul className="divide-y rounded-xl border">
           {receitas.map((r) => {
             const vigente = r.versoes_receita.find((v) => v.status === "aprovada")
             const rascunho = r.versoes_receita.some((v) => v.status === "rascunho")
             const destino = custos && !vigente ? `/subprodutos/${r.id}/rascunho` : `/subprodutos/${r.id}`
             return (
-              <li key={r.id}>
-                <Link href={destino} className="grid gap-1 px-4 py-3 hover:bg-muted/50 sm:grid-cols-[1fr_auto] sm:items-center">
+              <li key={r.id} className="flex items-stretch">
+                <label className="flex w-12 shrink-0 cursor-pointer items-center justify-center hover:bg-muted/50" title={vigente ? "Marcar para o PDF" : "Sem versão aprovada"}>
+                  <input type="checkbox" name="ids" value={r.id} disabled={!vigente} className="size-4 accent-foreground" aria-label={`Marcar ${r.nome} para o PDF`} />
+                </label>
+                <Link href={destino} className="grid min-w-0 flex-1 gap-1 py-3 pr-4 hover:bg-muted/50 sm:grid-cols-[1fr_auto] sm:items-center">
                   <div className="min-w-0">
                     <div className="font-medium">{r.nome}</div>
                     <div className="flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
@@ -89,6 +94,7 @@ export default async function Subprodutos({ searchParams }: { searchParams: Prom
             )
           })}
         </ul>
+        </SelecaoPdf>
       )}
     </div>
   )

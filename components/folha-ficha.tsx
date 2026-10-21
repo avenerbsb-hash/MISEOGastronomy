@@ -1,4 +1,4 @@
-import { numero, percentual, reais, rotuloUnidade } from "@/lib/formato"
+import { custoPorUnidade, numero, percentual, reais, rotuloUnidade, type Dimensao } from "@/lib/formato"
 import { agruparPorEtapa, type LinhaProducao } from "@/components/ficha-producao"
 import { TabelaCustos, type LinhaGerencial } from "@/components/tabela-custos"
 import { LogoCasa } from "@/components/logo-casa"
@@ -12,10 +12,11 @@ export type CustosFolha = {
   meta: number
 }
 
-// Uma folha A4 de ficha técnica: preparo (sem R$) ou gestão (com custos e CMV)
-export function FolhaFicha({ nome, codigo, casa, emitido, linhas, custos, className }: {
+// Uma folha A4 de ficha técnica: preparo (sem R$) ou gestão (com custos e CMV).
+// "subproduto": preparo/base — no lugar de preço e CMV mostra o custo por kg, L ou unidade.
+export function FolhaFicha({ nome, codigo, casa, emitido, linhas, custos, className, subproduto }: {
   nome: string; codigo: string; casa: { nome: string; logo?: string | null }; emitido: string
-  linhas: LinhaProducao[]; custos?: CustosFolha; className?: string
+  linhas: LinhaProducao[]; custos?: CustosFolha; className?: string; subproduto?: { dimensao: Dimensao }
 }) {
   const v = linhas[0]
   const componentes = linhas.filter((l) => l.componente)
@@ -30,7 +31,7 @@ export function FolhaFicha({ nome, codigo, casa, emitido, linhas, custos, classN
           <div>
             <h2 className="text-xl font-semibold">{nome}</h2>
             <p className="text-sm text-muted-foreground">
-              {codigo} · {casa.nome} · {custos ? "Ficha técnica gerencial" : "Ficha técnica de preparo"}
+              {codigo} · {casa.nome} · {subproduto ? (custos ? "Preparo · ficha gerencial" : "Preparo · ficha de produção") : custos ? "Ficha técnica gerencial" : "Ficha técnica de preparo"}
             </p>
           </div>
         </div>
@@ -44,7 +45,16 @@ export function FolhaFicha({ nome, codigo, casa, emitido, linhas, custos, classN
         <div><dt className="text-muted-foreground">Validade</dt><dd className="font-medium">{v.validade_horas ? `${v.validade_horas} h` : "—"}</dd></div>
       </dl>
 
-      {custos ? (
+      {custos && subproduto ? (
+        <>
+          <dl className="grid grid-cols-2 gap-3 rounded-lg bg-muted/40 p-3 text-sm sm:grid-cols-3">
+            <div><dt className="text-muted-foreground">Custo</dt><dd className="text-lg font-semibold tabular-nums">{custos.custo != null ? custoPorUnidade(custos.custo, subproduto.dimensao) : "falta preço"}</dd></div>
+            <div><dt className="text-muted-foreground">Custo do lote</dt><dd className="text-lg tabular-nums">{custos.linhas.length && custos.linhas.every((l) => l.custo != null) ? reais(custos.linhas.reduce((s, l) => s + Number(l.custo), 0)) : "—"}</dd></div>
+          </dl>
+          <TabelaCustos linhas={custos.linhas} />
+          <p className="text-xs text-muted-foreground">Custos com o último preço validado de cada insumo em {casa.nome}.</p>
+        </>
+      ) : custos ? (
         <>
           <dl className="grid grid-cols-2 gap-3 rounded-lg bg-muted/40 p-3 text-sm sm:grid-cols-5">
             <div><dt className="text-muted-foreground">Custo da porção</dt><dd className="text-lg font-semibold tabular-nums">{custos.custo != null ? reais(custos.custo) : "falta preço"}</dd></div>

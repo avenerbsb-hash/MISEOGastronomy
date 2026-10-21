@@ -4,6 +4,8 @@ import { createClient } from "@/lib/supabase/server"
 import { exigirProducao, podeVerCustos } from "@/lib/sessao"
 import { Abas } from "@/components/abas"
 import { NOME_DIMENSAO, type Dimensao } from "@/lib/formato"
+import { buttonVariants } from "@/components/ui/button"
+import { FileDown } from "lucide-react"
 
 export default async function LayoutSubproduto({
   children, params,
@@ -29,9 +31,16 @@ export default async function LayoutSubproduto({
 
   return (
     <div>
-      <div className="mb-2 text-sm"><Link href="/subprodutos" className="text-muted-foreground hover:underline">← Preparos e bases</Link></div>
-      <h1 className="text-xl font-semibold">{r.nome}</h1>
-      <p className="mb-3 text-sm text-muted-foreground">{r.codigo} · {NOME_DIMENSAO[r.dimensao_saida as Dimensao]}</p>
+      <div className="mb-2 text-sm print:hidden"><Link href="/subprodutos" className="text-muted-foreground hover:underline">← Preparos e bases</Link></div>
+      <div className="mb-3 flex flex-wrap items-start justify-between gap-2">
+        <div>
+          <h1 className="text-xl font-semibold">{r.nome}</h1>
+          <p className="text-sm text-muted-foreground">{r.codigo} · {NOME_DIMENSAO[r.dimensao_saida as Dimensao]}</p>
+        </div>
+        <Link href={`/subprodutos/pdf?ids=${id}`} className={buttonVariants({ variant: "outline", className: "h-11 px-4" })}>
+          <FileDown className="size-4" aria-hidden /> PDF
+        </Link>
+      </div>
       <Abas itens={abas} />
       {children}
     </div>
