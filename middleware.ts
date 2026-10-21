@@ -32,6 +32,14 @@ export async function middleware(request: NextRequest) {
   }
 
   let response = NextResponse.next({ request })
+  // Respostas com sessão não devem ser reutilizadas por caches compartilhados.
+  response.headers.set("Cache-Control", "private, no-store")
+  function redirecionar(url: URL) {
+    const destino = NextResponse.redirect(url)
+    response.cookies.getAll().forEach((cookie) => destino.cookies.set(cookie))
+    destino.headers.set("Cache-Control", "private, no-store")
+    return destino
+  }
   try {
     const supabase = createServerClient(URL_SUPABASE!, CHAVE_SUPABASE!, {
       cookies: {
@@ -41,6 +49,7 @@ export async function middleware(request: NextRequest) {
         setAll(cookiesToSet) {
           cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value))
           response = NextResponse.next({ request })
+          response.headers.set("Cache-Control", "private, no-store")
           cookiesToSet.forEach(({ name, value, options }) => response.cookies.set(name, value, options))
         },
       },
@@ -50,20 +59,21 @@ export async function middleware(request: NextRequest) {
       data: { user },
     } = await supabase.auth.getUser()
 
-    const publica = request.nextUrl.pathname.startsWith("/login")
+    const publica = request.nextUrl.pathname === "/login"
     // documentos legais: abertos para todos, sem redirecionar
     if (/^\/(termos|privacidade)(\/|$)/.test(request.nextUrl.pathname)) return response
     if (!user && !publica) {
       const url = request.nextUrl.clone()
       url.pathname = "/login"
       url.search = ""
-      return NextResponse.redirect(url)
+      url.searchParams.set("next", request.nextUrl.pathname + request.nextUrl.search)
+      return redirecionar(url)
     }
     if (user && publica) {
       const url = request.nextUrl.clone()
       url.pathname = "/"
       url.search = ""
-      return NextResponse.redirect(url)
+      return redirecionar(url)
     }
     return response
   } catch (e) {

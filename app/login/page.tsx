@@ -4,10 +4,12 @@ import { FormAcao, BotaoEnviar } from "@/components/form-acao"
 import { Campo, Entrada } from "@/components/campos"
 import Link from "next/link"
 import { entrar } from "./actions"
+import { destinoLogin } from "@/lib/destino-login"
 
 export const metadata: Metadata = { title: "Entrar" }
 
-export default function PaginaLogin() {
+export default async function PaginaLogin({ searchParams }: { searchParams: Promise<{ next?: string | string[] }> }) {
+  const destino = destinoLogin((await searchParams).next)
   return (
     <main className="mx-auto flex min-h-dvh max-w-sm items-center px-4">
       <Card className="w-full">
@@ -17,6 +19,7 @@ export default function PaginaLogin() {
         </CardHeader>
         <CardContent>
           <FormAcao acao={entrar} limparAoSalvar={false}>
+            <input type="hidden" name="next" value={destino} />
             <Campo rotulo="E-mail">
               <Entrada name="email" type="email" autoComplete="username" required />
             </Campo>

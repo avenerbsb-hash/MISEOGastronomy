@@ -20,6 +20,8 @@ export async function trocarCasa(dados: FormData) {
 export async function sair() {
   const supabase = await createClient()
   await supabase.auth.signOut()
+  ;(await cookies()).delete(COOKIE_CASA)
+  revalidatePath("/", "layout")
   redirect("/login")
 }
 
