@@ -158,3 +158,9 @@ export async function indicadoresDaCasa(estab: string, mes?: string): Promise<Ma
 export function mesDoParametro(v: string | undefined): string | undefined {
   return v && /^\d{4}-(0[1-9]|1[0-2])$/.test(v) ? `${v}-01` : undefined
 }
+
+// ------------------------------------------------------------------ itens exclusivos de uma casa (migração 0030)
+// Filtro PostgREST: compartilhado (sem dono) ou da casa
+export const daCasa = (casaId: string) => `estabelecimento_id.is.null,estabelecimento_id.eq.${casaId}`
+// Item visível na casa escolhida
+export const visivelNaCasa = (dono: string | null | undefined, casaId: string) => !dono || dono === casaId

@@ -6,7 +6,7 @@ import { custoPorUnidade, NOME_DIMENSAO, type Dimensao } from "@/lib/formato"
 import { buttonVariants } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { BuscaLista } from "@/components/busca-lista"
-import { emAlerta, variacoesDasReceitas } from "@/lib/dados"
+import { emAlerta, variacoesDasReceitas, visivelNaCasa } from "@/lib/dados"
 import { AvisoAlertas } from "@/components/aviso-alertas"
 import { BadgeVariacao } from "@/components/variacao"
 import { SelecaoPdf } from "@/components/selecao-pdf"
@@ -14,7 +14,7 @@ import { SelecaoPdf } from "@/components/selecao-pdf"
 export const metadata: Metadata = { title: "Preparos e bases" }
 
 type Receita = {
-  id: string; codigo: string; nome: string; dimensao_saida: Dimensao; ativo: boolean
+  id: string; codigo: string; nome: string; dimensao_saida: Dimensao; ativo: boolean; estabelecimento_id: string | null
   versoes_receita: { numero: number; status: "rascunho" | "aprovada" | "arquivada" }[]
 }
 
@@ -25,13 +25,13 @@ export default async function Subprodutos({ searchParams }: { searchParams: Prom
   const supabase = await createClient()
   let consulta = supabase
     .from("receitas")
-    .select("id, codigo, nome, dimensao_saida, ativo, versoes_receita(numero, status)")
+    .select("id, codigo, nome, dimensao_saida, ativo, estabelecimento_id, versoes_receita(numero, status)")
     .eq("tipo", "subproduto")
     .order("nome")
   const termo = q.trim().replace(/[%,()]/g, " ")
   if (termo) consulta = consulta.or(`nome.ilike.%${termo}%,codigo.ilike.%${termo}%`)
   const { data } = await consulta
-  const receitas = (data ?? []) as Receita[]
+  const receitas = ((data ?? []) as Receita[]).filter((r) => visivelNaCasa(r.estabelecimento_id, s.casa.id))
 
   // Produção não busca custo nenhum
   const custoPorReceita = new Map<string, number | null>()

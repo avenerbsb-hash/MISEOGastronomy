@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server"
 import { exigirProducao, podeVerCustos } from "@/lib/sessao"
 import { Abas } from "@/components/abas"
 import { NOME_DIMENSAO, type Dimensao } from "@/lib/formato"
+import { visivelNaCasa } from "@/lib/dados"
 import { buttonVariants } from "@/components/ui/button"
 import { FileDown } from "lucide-react"
 
@@ -14,8 +15,8 @@ export default async function LayoutSubproduto({
   const { id } = await params
   const supabase = await createClient()
   const { data: r } = await supabase
-    .from("receitas").select("codigo, nome, tipo, dimensao_saida").eq("id", id).maybeSingle()
-  if (!r || r.tipo !== "subproduto") notFound()
+    .from("receitas").select("codigo, nome, tipo, dimensao_saida, estabelecimento_id").eq("id", id).maybeSingle()
+  if (!r || r.tipo !== "subproduto" || !visivelNaCasa(r.estabelecimento_id, s.casa.id)) notFound()
 
   const abas = podeVerCustos(s)
     ? [

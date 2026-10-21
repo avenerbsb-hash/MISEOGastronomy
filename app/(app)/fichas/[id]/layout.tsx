@@ -7,6 +7,7 @@ import { buttonVariants } from "@/components/ui/button"
 import { FileDown, MoreHorizontal } from "lucide-react"
 import { ExcluirFicha, FichaExcluida } from "@/components/excluir-ficha"
 import { excluirFicha, restaurarFicha } from "../actions"
+import { visivelNaCasa } from "@/lib/dados"
 
 export default async function LayoutFicha({
   children, params,
@@ -14,8 +15,8 @@ export default async function LayoutFicha({
   const s = await exigirProducao()
   const { id } = await params
   const supabase = await createClient()
-  const { data: r } = await supabase.from("receitas").select("codigo, nome, tipo, ativo").eq("id", id).maybeSingle()
-  if (!r || r.tipo !== "final") notFound()
+  const { data: r } = await supabase.from("receitas").select("codigo, nome, tipo, ativo, estabelecimento_id").eq("id", id).maybeSingle()
+  if (!r || r.tipo !== "final" || !visivelNaCasa(r.estabelecimento_id, s.casa.id)) notFound()
 
   const custos = podeVerCustos(s)
   // Gestão (custo, preço, CMV e composição) e Preparo (ingredientes e etapas, sem R$)

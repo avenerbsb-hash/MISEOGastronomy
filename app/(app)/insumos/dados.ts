@@ -1,6 +1,6 @@
 import "server-only"
 import { createClient } from "@/lib/supabase/server"
-import { categorias, indicadoresDaCasa, mesDoParametro, nomesCategorias, variacoesDaCasa, type Insumo, type VariacaoInsumo } from "@/lib/dados"
+import { categorias, indicadoresDaCasa, mesDoParametro, nomesCategorias, variacoesDaCasa, type Insumo, type VariacaoInsumo, visivelNaCasa } from "@/lib/dados"
 
 // Busca, filtro e ordenação da lista de insumos (tela e relatório usam a mesma regra)
 
@@ -39,13 +39,16 @@ export type ParamsInsumos = { q?: string; categoria?: string; variacao?: string;
 export type LinhaInsumo = Pick<Insumo, "id" | "codigo" | "nome" | "dimensao" | "categoria_id" | "ativo">
 
 // Insumos usados em versões aprovadas (fichas e preparos), em páginas de 1000 linhas
-export async function insumosEmFichas(): Promise<Set<string>> {
+// casaId: só fichas e preparos visíveis na casa (compartilhados ou dela)
+export async function insumosEmFichas(casaId?: string): Promise<Set<string>> {
   const supabase = await createClient()
   const ids = new Set<string>()
   for (let de = 0; ; de += 1000) {
-    const { data } = await supabase.from("componentes_receita").select("insumo_id, versoes_receita!inner(status)")
+    const { data } = await supabase.from("componentes_receita").select("insumo_id, versoes_receita!inner(status, receitas!inner(estabelecimento_id))")
       .eq("versoes_receita.status", "aprovada").not("insumo_id", "is", null).range(de, de + 999)
-    for (const c of (data ?? []) as { insumo_id: string }[]) ids.add(c.insumo_id)
+    for (const c of (data ?? []) as unknown as { insumo_id: string; versoes_receita: { receitas: { estabelecimento_id: string | null } } }[]) {
+      if (!casaId || visivelNaCasa(c.versoes_receita?.receitas?.estabelecimento_id, casaId)) ids.add(c.insumo_id)
+    }
     if (!data || data.length < 1000) break
   }
   return ids
@@ -65,7 +68,7 @@ export async function carregarInsumos(casaId: string, params: ParamsInsumos) {
 
   let consulta = supabase
     .from("insumos")
-    .select("id, codigo, nome, dimensao, categoria_id, ativo")
+    .select("id, codigo, nome, dimensao, categoria_id, ativo, estabelecimento_id")
     .order("nome")
   if (q.trim()) {
     const termo = q.trim().replace(/[%,()]/g, " ")
@@ -79,7 +82,7 @@ export async function carregarInsumos(casaId: string, params: ParamsInsumos) {
   const mesISO = mesDoParametro(params.mes)
   const [{ data, error }, variacoes, indicadores, usados] = await Promise.all([
     consulta, variacoesDaCasa(casaId), indicadoresDaCasa(casaId, mesISO),
-    uso ? insumosEmFichas() : Promise.resolve(null),
+    uso ? insumosEmFichas(casaId) : Promise.resolve(null),
   ])
   // Situação pela base escolhida (0012); sem a migração, a variação antiga
   const sit = (id: string): Situacao => {
@@ -93,7 +96,8 @@ export async function carregarInsumos(casaId: string, params: ParamsInsumos) {
     ? (base === "compra" ? indicadores.get(id)?.variacao_ultima_pct : indicadores.get(id)?.variacao_mensal_pct)
     : variacoes.get(id)?.variacao_pct)
   const emFichas = usados
-  const todos = ((data ?? []) as LinhaInsumo[]).filter((i) => !emFichas || emFichas.has(i.id))
+  const todos = ((data ?? []) as (LinhaInsumo & { estabelecimento_id?: string | null })[])
+    .filter((i) => visivelNaCasa(i.estabelecimento_id, casaId) && (!emFichas || emFichas.has(i.id)))
 
   const contagem = new Map<string, number>([["", todos.length]])
   for (const i of todos) {

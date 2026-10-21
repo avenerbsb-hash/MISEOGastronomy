@@ -10,14 +10,14 @@ import { FileDown } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { precosDasFichas } from "./dados"
 import { BuscaLista } from "@/components/busca-lista"
-import { emAlerta, variacoesDasReceitas } from "@/lib/dados"
+import { emAlerta, variacoesDasReceitas, visivelNaCasa } from "@/lib/dados"
 import { AvisoAlertas } from "@/components/aviso-alertas"
 import { BadgeVariacao } from "@/components/variacao"
 
 export const metadata: Metadata = { title: "Fichas técnicas" }
 
 type Receita = {
-  id: string; codigo: string; nome: string; categoria_id: string | null; ativo: boolean
+  id: string; codigo: string; nome: string; categoria_id: string | null; ativo: boolean; estabelecimento_id: string | null
   versoes_receita: { numero: number; status: "rascunho" | "aprovada" | "arquivada" }[]
 }
 
@@ -50,13 +50,13 @@ export default async function Fichas({ searchParams }: { searchParams: Promise<{
   const supabase = await createClient()
   const [{ data }, cats] = await Promise.all([
     (termo
-      ? supabase.from("receitas").select("id, codigo, nome, categoria_id, ativo, versoes_receita(numero, status)").eq("tipo", "final").or(`nome.ilike.%${termo}%,codigo.ilike.%${termo}%`).order("nome")
-      : supabase.from("receitas").select("id, codigo, nome, categoria_id, ativo, versoes_receita(numero, status)").eq("tipo", "final").order("nome")),
+      ? supabase.from("receitas").select("id, codigo, nome, categoria_id, ativo, estabelecimento_id, versoes_receita(numero, status)").eq("tipo", "final").or(`nome.ilike.%${termo}%,codigo.ilike.%${termo}%`).order("nome")
+      : supabase.from("receitas").select("id, codigo, nome, categoria_id, ativo, estabelecimento_id, versoes_receita(numero, status)").eq("tipo", "final").order("nome")),
     categorias("receita"),
   ])
   const nomes = nomesCategorias(cats)
   // fichas excluídas (ativo = false) só aparecem em "Ver excluídas"
-  const lidasTodas = (data ?? []) as Receita[]
+  const lidasTodas = ((data ?? []) as Receita[]).filter((r) => visivelNaCasa(r.estabelecimento_id, s.casa.id))
   const nExcluidas = lidasTodas.filter((r) => !r.ativo).length
   const lidas = lidasTodas.filter((r) => r.ativo !== verExcluidas)
 

@@ -8,6 +8,7 @@ import { type LinhaGerencial } from "@/components/tabela-custos"
 import { BotaoImprimir } from "@/components/botao-imprimir"
 import { FolhaFicha, type CustosFolha } from "@/components/folha-ficha"
 import { LogoCasa } from "@/components/logo-casa"
+import { daCasa } from "@/lib/dados"
 import { cn } from "@/lib/utils"
 
 export const metadata: Metadata = { title: "PDF de preparos" }
@@ -31,7 +32,7 @@ export default async function PdfPreparos({ searchParams }: { searchParams: Prom
   }
 
   const [{ data: rec }, { data: producao }] = await Promise.all([
-    supabase.from("receitas").select("id, codigo, nome, dimensao_saida").eq("tipo", "subproduto").in("id", ids).order("nome"),
+    supabase.from("receitas").select("id, codigo, nome, dimensao_saida").eq("tipo", "subproduto").in("id", ids).or(daCasa(s.casa.id)).order("nome"),
     supabase.from("vw_ficha_producao").select("*").in("receita_id", ids).order("ordem"),
   ])
   const receitas = (rec ?? []) as { id: string; codigo: string; nome: string; dimensao_saida: Dimensao }[]

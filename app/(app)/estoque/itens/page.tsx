@@ -1,5 +1,6 @@
 import type { Metadata } from "next"
 import { createClient } from "@/lib/supabase/server"
+import { daCasa } from "@/lib/dados"
 import { exigirGerencia } from "@/lib/sessao"
 import { FormAcao, BotaoEnviar } from "@/components/form-acao"
 import { Entrada } from "@/components/campos"
@@ -23,7 +24,7 @@ export default async function ItensEstoque() {
   const [itens, insumos] = await Promise.all([
     supabase.from("estoque_itens").select("id, insumo_id, unidade_compra, conteudo, estoque_minimo, ativo, insumos(nome, dimensao)")
       .eq("estabelecimento_id", s.casa.id),
-    supabase.from("insumos").select("id, nome").eq("ativo", true).order("nome"),
+    supabase.from("insumos").select("id, nome").eq("ativo", true).or(daCasa(s.casa.id)).order("nome"),
   ])
   if (itens.error) return <p className="text-sm text-muted-foreground">O controle de estoque ainda não está ativo nesta base (migração 0019).</p>
   const lista = ((itens.data ?? []) as unknown as Item[]).sort((a, b) =>

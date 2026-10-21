@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/server"
 import { exigirCustos } from "@/lib/sessao"
-import { categorias, nomesCategorias } from "@/lib/dados"
+import { categorias, nomesCategorias, daCasa } from "@/lib/dados"
 import { numero, reais, rotuloUnidade, type Dimensao } from "@/lib/formato"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { FormAcao, BotaoEnviar } from "@/components/form-acao"
@@ -76,9 +76,9 @@ export default async function Rascunho({ params }: { params: Promise<{ id: strin
     supabase.from("componentes_receita")
       .select("id, ordem, etapa, quantidade, unidade, observacao, insumos(nome), receitas(nome)")
       .eq("versao_id", versao.id).order("ordem"),
-    supabase.from("insumos").select("id, nome, dimensao, densidade_validada_em").eq("ativo", true).order("nome"),
+    supabase.from("insumos").select("id, nome, dimensao, densidade_validada_em").eq("ativo", true).or(daCasa(s.casa.id)).order("nome"),
     supabase.from("receitas").select("id, nome, dimensao_saida, densidade_validada_em")
-      .eq("tipo", "subproduto").eq("ativo", true).neq("id", id).order("nome"),
+      .eq("tipo", "subproduto").eq("ativo", true).neq("id", id).or(daCasa(s.casa.id)).order("nome"),
     supabase.rpc("ficha_gerencial", { p_receita: id, p_estab: s.casa.id, p_versao: versao.id }),
     categorias("insumo"),
   ])

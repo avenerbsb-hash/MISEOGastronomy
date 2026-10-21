@@ -2,7 +2,7 @@ import type { Metadata } from "next"
 import Link from "next/link"
 import { createClient } from "@/lib/supabase/server"
 import { exigirCustos } from "@/lib/sessao"
-import { categorias, nomesCategorias } from "@/lib/dados"
+import { categorias, nomesCategorias, daCasa } from "@/lib/dados"
 import type { Dimensao } from "@/lib/formato"
 import { ImportarNotas } from "./importar-notas"
 
@@ -12,7 +12,7 @@ export default async function PaginaImportarNotas() {
   const s = await exigirCustos()
   const supabase = await createClient()
   const [{ data: insumos }, cats] = await Promise.all([
-    supabase.from("insumos").select("id, nome, dimensao").eq("ativo", true).order("nome"),
+    supabase.from("insumos").select("id, nome, dimensao").eq("ativo", true).or(daCasa(s.casa.id)).order("nome"),
     categorias("insumo"),
   ])
   const nomes = nomesCategorias(cats)

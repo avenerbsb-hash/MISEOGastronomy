@@ -8,6 +8,7 @@ import { BotaoImprimir } from "@/components/botao-imprimir"
 import { FolhaFicha, type CustosFolha } from "@/components/folha-ficha"
 import { cn } from "@/lib/utils"
 import { precosDasFichas } from "../../dados"
+import { visivelNaCasa } from "@/lib/dados"
 
 // PDF da ficha: "preparo" (sem R$, para a cozinha/bar) ou "custos" (gestão: custo, preço e CMV)
 export default async function PdfFicha({
@@ -20,11 +21,11 @@ export default async function PdfFicha({
   const supabase = await createClient()
 
   const [{ data: receita }, { data: producao }] = await Promise.all([
-    supabase.from("receitas").select("codigo, nome").eq("id", id).maybeSingle(),
+    supabase.from("receitas").select("codigo, nome, estabelecimento_id").eq("id", id).maybeSingle(),
     supabase.from("vw_ficha_producao").select("*").eq("receita_id", id).order("ordem"),
   ])
   const linhas = (producao ?? []) as LinhaProducao[]
-  if (!receita || !linhas.length) {
+  if (!receita || !linhas.length || !visivelNaCasa(receita.estabelecimento_id, s.casa.id)) {
     return <p className="text-sm text-muted-foreground">Esta ficha ainda não tem versão aprovada, então não há PDF.</p>
   }
 

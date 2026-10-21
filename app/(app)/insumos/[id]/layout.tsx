@@ -1,6 +1,7 @@
 import Link from "next/link"
 import { notFound } from "next/navigation"
 import { createClient } from "@/lib/supabase/server"
+import { visivelNaCasa } from "@/lib/dados"
 import { exigirCustos } from "@/lib/sessao"
 import { Abas } from "@/components/abas"
 import { VoltarLista } from "@/components/voltar-lista"
@@ -10,12 +11,12 @@ import { NOME_DIMENSAO, type Dimensao } from "@/lib/formato"
 export default async function LayoutInsumo({
   children, params,
 }: { children: React.ReactNode; params: Promise<{ id: string }> }) {
-  await exigirCustos()
+  const s = await exigirCustos()
   const { id } = await params
   const supabase = await createClient()
   const { data: insumo } = await supabase
-    .from("insumos").select("codigo, nome, dimensao, ativo, categorias(nome)").eq("id", id).maybeSingle()
-  if (!insumo) notFound()
+    .from("insumos").select("codigo, nome, dimensao, ativo, estabelecimento_id, categorias(nome)").eq("id", id).maybeSingle()
+  if (!insumo || !visivelNaCasa(insumo.estabelecimento_id, s.casa.id)) notFound()
   const cat = (insumo.categorias as unknown as { nome: string } | null)?.nome
 
   return (

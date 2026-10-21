@@ -11,7 +11,7 @@ import { registrarCompraAvulsa, validarPreco } from "../insumos/actions"
 import { CompraAvulsa } from "@/components/compra-avulsa"
 import { hojeSP } from "@/lib/formato"
 import { registrarRecebimento, removerLimite, resolverConferencia, salvarLimite } from "./actions"
-import { categorias, nomesCategorias } from "@/lib/dados"
+import { categorias, nomesCategorias, daCasa } from "@/lib/dados"
 import { ConferenciaAberta, ConferenciasResolvidas, LimitesConferencia, type Conferencia, type Limite } from "@/components/conferencias"
 
 export const metadata: Metadata = { title: "Compras" }
@@ -46,7 +46,7 @@ export default async function Pendencias() {
     supabase.rpc("conferencias_da_casa", { p_estab: s.casa.id, p_abertas: false, p_limite: 20 }),
     supabase.from("limites_conferencia_preco").select("id, categoria_id, limite_pct").eq("estabelecimento_id", s.casa.id),
     categorias("insumo"),
-    supabase.from("insumos").select("id, nome, dimensao").eq("ativo", true).order("nome"),
+    supabase.from("insumos").select("id, nome, dimensao").eq("ativo", true).or(daCasa(s.casa.id)).order("nome"),
     supabase.from("fornecedores").select("id, nome").eq("ativo", true).order("nome"),
   ])
   const comConferencia = !abertas.error

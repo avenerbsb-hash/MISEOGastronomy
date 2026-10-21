@@ -48,7 +48,7 @@ export default async function Inicio() {
     supabase.rpc("conferencias_da_casa", { p_estab: s.casa.id, p_abertas: true, p_limite: 200 }),
     alertasDaCasa(s.casa.id),
     indicadoresDaCasa(s.casa.id),
-    insumosEmFichas(),
+    insumosEmFichas(s.casa.id),
     // séries e oportunidades (0024): sem a migração, a tela segue sem os mini gráficos
     supabase.rpc("serie_mercado_casa", { p_estab: s.casa.id, p_semanas: SEMANAS, p_itens: 10 }),
     supabase.rpc("oportunidades_economia", { p_estab: s.casa.id }),
