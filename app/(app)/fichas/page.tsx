@@ -8,9 +8,9 @@ import { Badge } from "@/components/ui/badge"
 import { buttonVariants } from "@/components/ui/button"
 import { FileDown, Plus } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { precosDasFichas } from "./dados"
+import { precosDasFichas, type PrecoFicha } from "./dados"
 import { BuscaLista } from "@/components/busca-lista"
-import { emAlerta, variacoesDasReceitas, visivelNaCasa } from "@/lib/dados"
+import { custosDasReceitas, daCasa, emAlerta, variacoesDasReceitas, visivelNaCasa, type VariacaoReceita } from "@/lib/dados"
 import { AvisoAlertas } from "@/components/aviso-alertas"
 import { BadgeVariacao } from "@/components/variacao"
 
@@ -48,26 +48,22 @@ export default async function Fichas({ searchParams }: { searchParams: Promise<{
   const tipo = GRUPOS.some((g) => g.valor === tipoBruto) ? tipoBruto : ""
   const termo = q.trim().replace(/[%,()]/g, " ")
   const supabase = await createClient()
-  const [{ data }, cats] = await Promise.all([
-    (termo
-      ? supabase.from("receitas").select("id, codigo, nome, categoria_id, ativo, estabelecimento_id, versoes_receita(numero, status)").eq("tipo", "final").or(`nome.ilike.%${termo}%,codigo.ilike.%${termo}%`).order("nome")
-      : supabase.from("receitas").select("id, codigo, nome, categoria_id, ativo, estabelecimento_id, versoes_receita(numero, status)").eq("tipo", "final").order("nome")),
+  // sem busca, só as fichas da casa (compartilhadas ou dela); custo, preço e meta vêm juntos
+  const consulta = supabase.from("receitas").select("id, codigo, nome, categoria_id, ativo, estabelecimento_id, versoes_receita(numero, status)")
+    .eq("tipo", "final").order("nome")
+  const [{ data }, cats, [precos, variacoes], { data: casaMeta }] = await Promise.all([
+    consulta.or(termo ? `nome.ilike.%${termo}%,codigo.ilike.%${termo}%` : daCasa(s.casa.id)),
     categorias("receita"),
+    // Produção não busca custo nem preço
+    custos ? Promise.all([precosDasFichas(s.casa.id), variacoesDasReceitas(s.casa.id, "final")]) : [new Map<string, PrecoFicha>(), new Map<string, VariacaoReceita>()],
+    // meta de CMV da casa (30% quando não definida): CMV acima dela fica vermelho
+    custos ? supabase.from("estabelecimentos").select("cmv_alvo_padrao").eq("id", s.casa.id).maybeSingle() : { data: null },
   ])
   const nomes = nomesCategorias(cats)
   // fichas excluídas (ativo = false) só aparecem em "Ver excluídas"
   const lidasTodas = ((data ?? []) as Receita[]).filter((r) => visivelNaCasa(r.estabelecimento_id, s.casa.id))
   const nExcluidas = lidasTodas.filter((r) => !r.ativo).length
   const lidas = lidasTodas.filter((r) => r.ativo !== verExcluidas)
-
-  // Produção não busca custo nem preço
-  const [precos, variacoes] = custos
-    ? await Promise.all([precosDasFichas(s.casa.id), variacoesDasReceitas(s.casa.id, "final")])
-    : [new Map(), new Map()]
-  // meta de CMV da casa (30% quando não definida): CMV acima dela fica vermelho
-  const { data: casaMeta } = custos
-    ? await supabase.from("estabelecimentos").select("cmv_alvo_padrao").eq("id", s.casa.id).maybeSingle()
-    : { data: null }
   const meta = Number(casaMeta?.cmv_alvo_padrao ?? 30)
   // "só no cardápio": esconde fichas sem item ativo no cardápio da casa
   const soCardapio = custos && cardapio === "sim" && !verExcluidas
@@ -90,12 +86,10 @@ export default async function Fichas({ searchParams }: { searchParams: Promise<{
     const qs = p.toString()
     return qs ? `/fichas?${qs}` : "/fichas"
   }
-  const custoSemCardapio = new Map<string, number | null>()
-  if (custos) {
-    const fora = receitas.filter((r) => !precos.has(r.id))
-    const res = await Promise.all(fora.map((r) => supabase.rpc("custo_receita", { p_receita: r.id, p_estab: s.casa.id })))
-    fora.forEach((r, i) => custoSemCardapio.set(r.id, (res[i].data as number | null) ?? null))
-  }
+  // custo das fichas fora do cardápio: uma chamada só
+  const custoSemCardapio = custos
+    ? await custosDasReceitas(s.casa.id, receitas.filter((r) => !precos.has(r.id)).map((r) => r.id))
+    : new Map<string, number | null>()
   if (custos && ordem === "cmv") {
     receitas.sort((a, b) => (precos.get(b.id)?.cmv ?? -1) - (precos.get(a.id)?.cmv ?? -1))
   }

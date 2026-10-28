@@ -6,7 +6,7 @@ import { custoPorUnidade, NOME_DIMENSAO, type Dimensao } from "@/lib/formato"
 import { buttonVariants } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { BuscaLista } from "@/components/busca-lista"
-import { emAlerta, variacoesDasReceitas, visivelNaCasa } from "@/lib/dados"
+import { custosDasReceitas, daCasa, emAlerta, variacoesDasReceitas, visivelNaCasa, type VariacaoReceita } from "@/lib/dados"
 import { AvisoAlertas } from "@/components/aviso-alertas"
 import { BadgeVariacao } from "@/components/variacao"
 import { SelecaoPdf } from "@/components/selecao-pdf"
@@ -29,19 +29,16 @@ export default async function Subprodutos({ searchParams }: { searchParams: Prom
     .eq("tipo", "subproduto")
     .order("nome")
   const termo = q.trim().replace(/[%,()]/g, " ")
-  if (termo) consulta = consulta.or(`nome.ilike.%${termo}%,codigo.ilike.%${termo}%`)
-  const { data } = await consulta
-  const receitas = ((data ?? []) as Receita[]).filter((r) => visivelNaCasa(r.estabelecimento_id, s.casa.id))
-
+  // sem busca, só os preparos da casa (compartilhados ou dela)
+  consulta = consulta.or(termo ? `nome.ilike.%${termo}%,codigo.ilike.%${termo}%` : daCasa(s.casa.id))
   // Produção não busca custo nenhum
-  const custoPorReceita = new Map<string, number | null>()
-  const variacoes = custos ? await variacoesDasReceitas(s.casa.id, "subproduto") : new Map()
-  if (custos) {
-    const resultados = await Promise.all(
-      receitas.map((r) => supabase.rpc("custo_receita", { p_receita: r.id, p_estab: s.casa.id })),
-    )
-    receitas.forEach((r, i) => custoPorReceita.set(r.id, (resultados[i].data as number | null) ?? null))
-  }
+  const [{ data }, variacoes] = await Promise.all([
+    consulta,
+    custos ? variacoesDasReceitas(s.casa.id, "subproduto") : new Map<string, VariacaoReceita>(),
+  ])
+  const receitas = ((data ?? []) as Receita[]).filter((r) => visivelNaCasa(r.estabelecimento_id, s.casa.id))
+  // custo de todos os preparos numa chamada só
+  const custoPorReceita = custos ? await custosDasReceitas(s.casa.id, receitas.map((r) => r.id)) : new Map<string, number | null>()
 
   return (
     <div className="grid gap-4">

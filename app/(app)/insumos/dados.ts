@@ -38,10 +38,15 @@ export type Ordem = keyof typeof ORDENS
 export type ParamsInsumos = { q?: string; categoria?: string; variacao?: string; ordem?: string; mes?: string; base?: string; uso?: string }
 export type LinhaInsumo = Pick<Insumo, "id" | "codigo" | "nome" | "dimensao" | "categoria_id" | "ativo">
 
-// Insumos usados em versões aprovadas (fichas e preparos), em páginas de 1000 linhas
-// casaId: só fichas e preparos visíveis na casa (compartilhados ou dela)
+// Insumos usados em versões aprovadas (fichas e preparos)
+// casaId: só fichas e preparos visíveis na casa (compartilhados ou dela), numa chamada só (0031);
+// sem a migração, em páginas de 1000 linhas
 export async function insumosEmFichas(casaId?: string): Promise<Set<string>> {
   const supabase = await createClient()
+  if (casaId) {
+    const { data, error } = await supabase.rpc("insumos_em_fichas", { p_estab: casaId })
+    if (!error) return new Set((data ?? []) as string[])
+  }
   const ids = new Set<string>()
   for (let de = 0; ; de += 1000) {
     const { data } = await supabase.from("componentes_receita").select("insumo_id, versoes_receita!inner(status, receitas!inner(estabelecimento_id))")

@@ -21,9 +21,11 @@ export const COOKIE_CASA = "miseo_casa"
 // Lê usuário, perfil e acessos uma vez por requisição
 export const obterSessao = cache(async (): Promise<Sessao> => {
   const supabase = await createClient()
-  const { data: auth } = await supabase.auth.getUser()
-  const user = auth.user
-  if (!user) redirect("/login")
+  // token conferido pela assinatura (sem ida ao servidor de login quando as chaves são assimétricas)
+  const { data: auth } = await supabase.auth.getClaims()
+  const claims = auth?.claims
+  if (!claims?.sub) redirect("/login")
+  const user = { id: claims.sub, email: claims.email }
 
   const { data: perfil } = await supabase
     .from("perfis").select("nome, admin, ativo").eq("user_id", user.id).maybeSingle()

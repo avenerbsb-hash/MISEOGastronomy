@@ -54,6 +54,21 @@ export async function variacoesDasReceitas(estab: string, tipo?: "final" | "subp
   return new Map(((data ?? []) as VariacaoReceita[]).map((v) => [v.receita_id, v]))
 }
 
+// Custo unitário de várias receitas numa chamada só (0031); sem a migração, uma chamada por receita
+export async function custosDasReceitas(estab: string, ids: string[]): Promise<Map<string, number | null>> {
+  const mapa = new Map<string, number | null>()
+  if (!ids.length) return mapa
+  const supabase = await createClient()
+  const { data, error } = await supabase.rpc("custos_receitas", { p_estab: estab, p_receitas: ids })
+  if (!error) {
+    for (const [id, custo] of Object.entries((data ?? {}) as Record<string, number | null>)) mapa.set(id, custo)
+    return mapa
+  }
+  const res = await Promise.all(ids.map((id) => supabase.rpc("custo_receita", { p_receita: id, p_estab: estab })))
+  ids.forEach((id, i) => mapa.set(id, (res[i].data as number | null) ?? null))
+  return mapa
+}
+
 // Histórico de custo de uma receita: uma linha por data em que o custo mudou
 export type LinhaHistoricoCusto = {
   data: string

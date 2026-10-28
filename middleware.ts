@@ -46,9 +46,9 @@ export async function middleware(request: NextRequest) {
       },
     })
 
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
+    // renova a sessão quando precisa e confere o token pela assinatura
+    const { data } = await supabase.auth.getClaims()
+    const user = data?.claims?.sub
 
     const publica = request.nextUrl.pathname.startsWith("/login")
     // documentos legais: abertos para todos, sem redirecionar

@@ -9,29 +9,25 @@ import { LogoCasa } from "@/components/logo-casa"
 
 export default async function LayoutApp({ children }: { children: React.ReactNode }) {
   const s = await obterSessao()
-  // aceite dos Termos e da Privacidade (0029); sem a migração, segue sem pedir
-  {
-    const supabase = await createClient()
-    const { data, error } = await supabase.from("aceites_termos").select("id").eq("user_id", s.userId).eq("versao", VERSAO_TERMOS).limit(1)
-    if (!error && !data?.length) return <AceiteTermos nome={s.nome} acao={aceitarTermos} sair={sair} />
-  }
+  const supabase = await createClient()
   const custos = podeVerCustos(s)
-  // compras esperando conferência na casa (número no menu)
-  let conferir = 0
-  if (custos && s.casa) {
-    const supabase = await createClient()
-    const { count } = await supabase.from("conferencias_preco").select("id", { count: "exact", head: true })
-      .eq("estabelecimento_id", s.casa.id).eq("status", "aberta")
-    conferir = count ?? 0
-  }
-  // pedido da última contagem ainda não emitido (0027): aviso no ícone de Estoque
-  let pedidoPendente = 0
-  if (s.casa && (ehGestor(s) || s.papel === "gerente" || s.papel === "estoquista")) {
-    const supabase = await createClient()
-    const { data, error } = await supabase.from("contagens_estoque").select("pedido_emitido_em")
-      .eq("estabelecimento_id", s.casa.id).order("data", { ascending: false }).order("criado_em", { ascending: false }).limit(1)
-    if (!error && data?.length && !data[0].pedido_emitido_em) pedidoPendente = 1
-  }
+  // as três leituras do menu saem juntas
+  const [aceite, conferencias, contagem] = await Promise.all([
+    // aceite dos Termos e da Privacidade (0029); sem a migração, segue sem pedir
+    supabase.from("aceites_termos").select("id").eq("user_id", s.userId).eq("versao", VERSAO_TERMOS).limit(1),
+    // compras esperando conferência na casa (número no menu)
+    custos && s.casa
+      ? supabase.from("conferencias_preco").select("id", { count: "exact", head: true }).eq("estabelecimento_id", s.casa.id).eq("status", "aberta")
+      : null,
+    // pedido da última contagem ainda não emitido (0027): aviso no ícone de Estoque
+    s.casa && (ehGestor(s) || s.papel === "gerente" || s.papel === "estoquista")
+      ? supabase.from("contagens_estoque").select("pedido_emitido_em")
+          .eq("estabelecimento_id", s.casa.id).order("data", { ascending: false }).order("criado_em", { ascending: false }).limit(1)
+      : null,
+  ])
+  if (!aceite.error && !aceite.data?.length) return <AceiteTermos nome={s.nome} acao={aceitarTermos} sair={sair} />
+  const conferir = conferencias?.count ?? 0
+  const pedidoPendente = contagem && !contagem.error && contagem.data?.length && !contagem.data[0].pedido_emitido_em ? 1 : 0
   const avisoEstoque = "pedido da última contagem para emitir"
   // ordem do dia a dia: resumo, cardápio e fichas, depois cadastro e compras
   const itens: ItemMenu[] = ehGestor(s)
